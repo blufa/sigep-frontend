@@ -59,7 +59,7 @@ export function IdBadge({
             <div className="flex-1" style={{ background: "#009460" }} />
           </div>
 
-          <div className="flex flex-col items-center gap-1.5 px-5 pb-2 pt-5 text-center print:gap-[0.27mm] print:px-[3.6mm] print:pb-[0.36mm] print:pt-[3.6mm]">
+          <div className="flex flex-col items-center gap-1.5 px-5 pb-3 pt-6 text-center print:gap-[0.27mm] print:px-[3.6mm] print:pb-[0.9mm] print:pt-[4.5mm]">
             <div className="flex items-center gap-2 print:gap-[0.36mm]">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -91,7 +91,7 @@ export function IdBadge({
 
           <div className="flex gap-3 px-5 print:gap-[0.54mm] print:px-[3.6mm]">
             <div
-              className="flex h-[120px] w-[98px] shrink-0 items-center justify-center overflow-hidden rounded-lg print:h-[21.6mm] print:w-[17.6mm] print:rounded-[0.7mm]"
+              className="flex h-[150px] w-[123px] shrink-0 items-center justify-center overflow-hidden rounded-lg print:h-[27mm] print:w-[22.1mm] print:rounded-[0.7mm]"
               style={{ background: "#F1F3F5", border: `2px solid ${ACCENT}` }}
             >
               {photoUrl ? (
@@ -101,7 +101,9 @@ export function IdBadge({
                 <User className="h-10 w-10 print:h-[7.2mm] print:w-[7.2mm]" style={{ color: MUTED }} strokeWidth={1.25} />
               )}
             </div>
-            <div className="flex min-w-0 flex-col gap-2 pt-0.5 print:gap-[0.36mm] print:pt-[0.09mm]">
+            {/* gap-4 (au lieu de gap-2) sépare davantage "FONCTION" du nom au-dessus — demande
+                explicite : "faire descendre un peu FONCTION Directeur Général". */}
+            <div className="flex min-w-0 flex-col gap-4 pt-1 print:gap-[2.1mm] print:pt-[0.9mm]">
               <div>
                 <p className="text-[8px] font-medium print:text-[1.44mm]" style={{ color: MUTED }}>
                   {firstName}
@@ -120,11 +122,11 @@ export function IdBadge({
           </div>
 
           <div
-            className="mx-5 mt-3 mb-3 flex items-center gap-3 rounded-xl p-2 print:mx-[3.6mm] print:mt-[0.54mm] print:mb-[0.54mm] print:gap-[0.54mm] print:rounded-[0.7mm] print:p-[0.36mm]"
+            className="mx-5 mt-5 mb-5 flex items-center gap-3 rounded-xl p-2 print:mx-[3.6mm] print:mt-[2.2mm] print:mb-[2.2mm] print:gap-[0.54mm] print:rounded-[0.7mm] print:p-[0.36mm]"
             style={{ background: "#F4F6F7" }}
           >
-            <div className="flex h-[82px] w-[82px] shrink-0 items-center justify-center rounded-md bg-white p-1 print:h-[14.8mm] print:w-[14.8mm] print:rounded-[0.5mm] print:p-[0.18mm]">
-              <QRCodeSVG value={card.qrToken} size={74} level="M" marginSize={0} className="h-full w-full" />
+            <div className="flex h-[104px] w-[104px] shrink-0 items-center justify-center rounded-md bg-white p-1 print:h-[18.7mm] print:w-[18.7mm] print:rounded-[0.5mm] print:p-[0.18mm]">
+              <QRCodeSVG value={card.qrToken} size={94} level="M" marginSize={0} className="h-full w-full" />
             </div>
             <div className="flex min-w-0 flex-col gap-1.5 print:gap-[0.27mm]">
               <p className="text-[7.5px] font-bold leading-tight print:text-[1.35mm]">
@@ -144,6 +146,14 @@ export function IdBadge({
               </div>
             </div>
           </div>
+
+          {/* Comble l'espace restant jusqu'au bas réel de la carte (fixé en print:h-[85.6mm] ci-dessus)
+              pour que le pied BADGE AGENT touche toujours le bord physique de la carte, quelle que
+              soit la longueur du contenu au-dessus — sans lui, le pied s'arrête là où le contenu
+              finit naturellement, laissant un blanc sous le bandeau (la "déformation" remontée),
+              invisible à l'écran (hauteur non contrainte) mais flagrant sur une carte PVC réelle ou
+              une planche aux cartes serrées. Même pattern que lacaeducation-ui/id-badge-portrait.tsx. */}
+          <div className="flex-1" />
 
           <div
             className="flex h-[34px] shrink-0 items-center justify-between px-5 text-white print:h-[6.1mm] print:px-[3.6mm]"

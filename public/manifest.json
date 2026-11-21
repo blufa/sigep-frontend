@@ -1,6 +1,6 @@
 {
-  "name": "SIGEP — Gestion des employés",
-  "short_name": "SIGEP",
+  "name": "SIGAP — Gestion des employés",
+  "short_name": "SIGAP",
   "description": "Système de gestion des employés : badges et pointage — MENET-FP / SNIESM",
   "start_url": "/dashboard",
   "scope": "/",

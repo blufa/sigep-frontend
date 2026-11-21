@@ -5,6 +5,7 @@ import { QueryProvider } from "@/providers/query-provider";
 import { AuthProvider } from "@/providers/auth-provider";
 import { SidebarProvider } from "@/context/SidebarContext";
 import { PwaRegister } from "@/components/pwa-register";
+import { InstallBanner } from "@/components/pwa/install-banner";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -17,7 +18,7 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "SIGEP",
+  title: "SIGAP",
   description: "Système de gestion des employés — SNIESM",
   manifest: "/manifest.json",
   icons: {
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </AuthProvider>
         </QueryProvider>
         <PwaRegister />
+        <InstallBanner />
       </body>
     </html>
   );

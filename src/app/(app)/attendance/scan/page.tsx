@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import jsQR from "jsqr";
 import { toast } from "sonner";
@@ -55,6 +55,92 @@ export default function ScanPage() {
     queryKey: ["employees", "scan"],
     queryFn: () => listEmployees(0, 200),
   });
+
+  /** Capture l'image caméra — appelée après le délai de décompte ci-dessous, donc normalement le
+   * visage de l'agent (badge déjà baissé) plutôt que le badge lui-même. */
+  const captureSnapshot = useCallback((): string | null => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState < video.HAVE_CURRENT_DATA) return null;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.8);
+  }, []);
+
+  const submitScan = useCallback(
+    async (token: string) => {
+      const photoBase64 = captureSnapshot();
+      try {
+        const result = await scanBadge(token, "QR", photoBase64);
+        const officialPhotoUrl = await getEmployeePhotoUrl(result.employeeId);
+        setLastResult({
+          employeeId: result.employeeId,
+          fullName: result.fullName,
+          direction: result.direction,
+          scannedAt: result.scannedAt,
+          capturedPhotoUrl: photoBase64,
+          officialPhotoUrl,
+        });
+        if (result.direction === "ENTREE") {
+          toast.success(`${result.fullName} — Entrée enregistrée`);
+        } else {
+          toast.success(`${result.fullName} — Sortie enregistrée`, { icon: undefined });
+        }
+      } catch (error) {
+        toast.error(extractErrorMessage(error, "Badge invalide ou illisible"));
+      }
+    },
+    [captureSnapshot],
+  );
+
+  const finalizeCapture = useCallback(async () => {
+    const token = pendingTokenRef.current;
+    pendingTokenRef.current = null;
+    stageRef.current = "submitting";
+    if (token) {
+      await submitScan(token);
+    }
+    stageRef.current = "scanning";
+  }, [submitScan]);
+
+  /** Badge reconnu : on arrête la détection QR et on laisse un court délai pour que l'agent
+   * baisse son badge et regarde la caméra, avant de prendre la photo du visage. */
+  const beginFaceCaptureCountdown = useCallback(
+    (token: string) => {
+      stageRef.current = "countdown";
+      pendingTokenRef.current = token;
+      let remaining = FACE_CAPTURE_DELAY_SECONDS;
+      setCountdown(remaining);
+      countdownTimerRef.current = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+          setCountdown(null);
+          void finalizeCapture();
+        } else {
+          setCountdown(remaining);
+        }
+      }, 1000);
+    },
+    [finalizeCapture],
+  );
+
+  // Appelée depuis la boucle de détection ci-dessous (requestAnimationFrame dans un effet), jamais
+  // pendant le rendu.
+  const handleDetected = useCallback(
+    (token: string) => {
+      const now = Date.now();
+      const last = lastScannedRef.current.get(token);
+      if (last && now - last < COOLDOWN_MS) return;
+      lastScannedRef.current.set(token, now);
+      beginFaceCaptureCountdown(token);
+    },
+    [beginFaceCaptureCountdown],
+  );
 
   useEffect(() => {
     if (!cameraOn) return;
@@ -140,81 +226,6 @@ export default function ScanPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraOn]);
 
-  function handleDetected(token: string) {
-    const now = Date.now();
-    const last = lastScannedRef.current.get(token);
-    if (last && now - last < COOLDOWN_MS) return;
-    lastScannedRef.current.set(token, now);
-    beginFaceCaptureCountdown(token);
-  }
-
-  /** Badge reconnu : on arrête la détection QR et on laisse un court délai pour que l'agent
-   * baisse son badge et regarde la caméra, avant de prendre la photo du visage. */
-  function beginFaceCaptureCountdown(token: string) {
-    stageRef.current = "countdown";
-    pendingTokenRef.current = token;
-    let remaining = FACE_CAPTURE_DELAY_SECONDS;
-    setCountdown(remaining);
-    countdownTimerRef.current = setInterval(() => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-        countdownTimerRef.current = null;
-        setCountdown(null);
-        void finalizeCapture();
-      } else {
-        setCountdown(remaining);
-      }
-    }, 1000);
-  }
-
-  async function finalizeCapture() {
-    const token = pendingTokenRef.current;
-    pendingTokenRef.current = null;
-    stageRef.current = "submitting";
-    if (token) {
-      await submitScan(token);
-    }
-    stageRef.current = "scanning";
-  }
-
-  /** Capture l'image caméra — appelée après le délai ci-dessus, donc normalement le visage de
-   * l'agent (badge déjà baissé) plutôt que le badge lui-même. */
-  function captureSnapshot(): string | null {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || video.readyState < video.HAVE_CURRENT_DATA) return null;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", 0.8);
-  }
-
-  async function submitScan(token: string) {
-    const photoBase64 = captureSnapshot();
-    try {
-      const result = await scanBadge(token, "QR", photoBase64);
-      const officialPhotoUrl = await getEmployeePhotoUrl(result.employeeId);
-      setLastResult({
-        employeeId: result.employeeId,
-        fullName: result.fullName,
-        direction: result.direction,
-        scannedAt: result.scannedAt,
-        capturedPhotoUrl: photoBase64,
-        officialPhotoUrl,
-      });
-      if (result.direction === "ENTREE") {
-        toast.success(`${result.fullName} — Entrée enregistrée`);
-      } else {
-        toast.success(`${result.fullName} — Sortie enregistrée`, { icon: undefined });
-      }
-    } catch (error) {
-      toast.error(extractErrorMessage(error, "Badge invalide ou illisible"));
-    }
-  }
-
   async function handleManualSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!manualEmployeeId) return;
@@ -264,7 +275,7 @@ export default function ScanPage() {
             <div className="relative aspect-video w-full overflow-hidden rounded-sm bg-gray-200">
               {cameraOn ? (
                 <>
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  { }
                   <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
 
                   {countdown !== null ? (

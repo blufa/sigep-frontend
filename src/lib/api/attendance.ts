@@ -29,17 +29,15 @@ export async function getAttendanceSummary(): Promise<AttendanceSummary> {
   return data;
 }
 
-export async function downloadMonthlyAttendanceReportPdf(year: number, month: number): Promise<void> {
+/** Récupère le PDF du rapport mensuel sans déclencher de téléchargement — l'appelant affiche ce blob
+ * (ex. dans un <iframe>) pour une prévisualisation avant impression, et appelle lui-même
+ * `URL.revokeObjectURL` une fois la prévisualisation fermée. */
+export async function getMonthlyAttendanceReportPdfBlobUrl(year: number, month: number): Promise<string> {
   const { data } = await http.get<Blob>("/attendance/report/monthly", {
     params: { year, month },
     responseType: "blob",
   });
-  const url = URL.createObjectURL(data);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `rapport-mensuel-presence-${year}-${String(month).padStart(2, "0")}.pdf`;
-  link.click();
-  URL.revokeObjectURL(url);
+  return URL.createObjectURL(data);
 }
 
 export async function getAttendanceHistory(params: {

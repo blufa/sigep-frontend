@@ -11,7 +11,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { AttendanceDonutChart } from "@/components/charts/attendance-donut-chart";
 import { PositionBreakdownChart } from "@/components/charts/position-breakdown-chart";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
-import { downloadMonthlyAttendanceReportPdf, getAttendanceHistory, getAttendanceSummary } from "@/lib/api/attendance";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
+import { getAttendanceHistory, getAttendanceSummary, getMonthlyAttendanceReportPdfBlobUrl } from "@/lib/api/attendance";
 import { listEmployees } from "@/lib/api/employees";
 import { listPositions } from "@/lib/api/positions";
 import { getOrganization } from "@/lib/api/organization";
@@ -50,7 +51,9 @@ function StatCard({
 
 export default function DashboardPage() {
   const [reportMonth, setReportMonth] = useState(currentMonthValue());
-  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [isLoadingReportPreview, setIsLoadingReportPreview] = useState(false);
+  const [reportPreviewUrl, setReportPreviewUrl] = useState<string | null>(null);
+  const [isReportPreviewOpen, setIsReportPreviewOpen] = useState(false);
 
   const { data: summary, isLoading: isLoadingSummary } = useQuery({
     queryKey: ["attendance-summary"],
@@ -95,16 +98,35 @@ export default function DashboardPage() {
   const presenceRate =
     summary && summary.totalActiveEmployees > 0 ? Math.round((totalToday / summary.totalActiveEmployees) * 100) : 0;
 
-  async function handleDownloadMonthlyReport() {
+  async function handlePreviewMonthlyReport() {
     const [yearStr, monthStr] = reportMonth.split("-");
-    setIsDownloadingReport(true);
+    setIsReportPreviewOpen(true);
+    setIsLoadingReportPreview(true);
     try {
-      await downloadMonthlyAttendanceReportPdf(Number(yearStr), Number(monthStr));
+      const url = await getMonthlyAttendanceReportPdfBlobUrl(Number(yearStr), Number(monthStr));
+      setReportPreviewUrl((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return url;
+      });
     } catch (error) {
       toast.error(extractErrorMessage(error, "Échec de la génération du rapport mensuel"));
+      setIsReportPreviewOpen(false);
     } finally {
-      setIsDownloadingReport(false);
+      setIsLoadingReportPreview(false);
     }
+  }
+
+  function handleCloseReportPreview() {
+    setIsReportPreviewOpen(false);
+  }
+
+  function handleDownloadReportFromPreview() {
+    if (!reportPreviewUrl) return;
+    const [yearStr, monthStr] = reportMonth.split("-");
+    const link = document.createElement("a");
+    link.href = reportPreviewUrl;
+    link.download = `rapport-mensuel-presence-${yearStr}-${monthStr.padStart(2, "0")}.pdf`;
+    link.click();
   }
 
   return (
@@ -120,7 +142,7 @@ export default function DashboardPage() {
               onChange={(e) => setReportMonth(e.target.value)}
               className="h-10 rounded-lg border border-gray-300 bg-transparent px-3 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10"
             />
-            <Button variant="outline" onClick={handleDownloadMonthlyReport} disabled={isDownloadingReport}>
+            <Button variant="outline" onClick={handlePreviewMonthlyReport} disabled={isLoadingReportPreview}>
               <FileDown className="mr-1.5 h-4 w-4" /> Rapport mensuel (PDF)
             </Button>
           </div>
@@ -234,6 +256,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PdfPreviewModal
+        isOpen={isReportPreviewOpen}
+        onClose={handleCloseReportPreview}
+        pdfUrl={isLoadingReportPreview ? null : reportPreviewUrl}
+        title={`Rapport mensuel de présence — ${reportMonth}`}
+        onDownload={handleDownloadReportFromPreview}
+      />
     </div>
   );
 }

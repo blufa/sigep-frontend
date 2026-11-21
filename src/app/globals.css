@@ -181,7 +181,18 @@
   @apply !stroke-gray-100 dark:!stroke-gray-800;
 }
 
+/* Par défaut, les navigateurs omettent les couleurs de fond/dégradés à l'impression (économie
+   d'encre) — ce qui viderait le liseré tricolore, le bandeau vert et le panneau QR du badge (et tout
+   autre fond coloré imprimé). On force leur rendu : document officiel aux couleurs de la République.
+   Sans cette règle, un utilisateur dont la case "Graphiques d'arrière-plan" est décochée dans la
+   boîte de dialogue d'impression du navigateur obtient un badge délavé (texte/bordures visibles,
+   fonds colorés absents) — même correctif que lacaeducation-ui/globals.css. */
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   @page {
     margin: 10mm;
   }

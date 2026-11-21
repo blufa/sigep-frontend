@@ -50,6 +50,10 @@ export function PhotoCaptureModal({ open, onClose, onCapture }: PhotoCaptureModa
 
   useEffect(() => {
     if (open) {
+      // Synchronisation volontaire avec un système externe (caméra) à l'ouverture de la modale —
+      // startCamera() pose `error` à null avant d'attendre getUserMedia, ce que le linter signale
+      // comme un setState synchrone ; c'est exactement le rôle de cet effet (pas du rendu).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       void startCamera();
     }
     return () => stopCamera();
@@ -101,7 +105,7 @@ export function PhotoCaptureModal({ open, onClose, onCapture }: PhotoCaptureModa
           // eslint-disable-next-line @next/next/no-img-element
           <img src={snapshot} alt="Capture" className="h-full w-full object-cover" />
         ) : (
-          // eslint-disable-next-line jsx-a11y/media-has-caption
+           
           <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
         )}
       </div>

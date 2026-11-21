@@ -50,6 +50,9 @@ function BadgesPageContent() {
 
   useEffect(() => {
     if (selectedIds.length === 0) {
+      // Réinitialisation synchrone volontaire : vide l'aperçu dès que la sélection redevient vide,
+      // sans attendre un aller-retour réseau (il n'y en a pas dans ce cas).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCards([]);
       setPhotoUrls([]);
       return;
