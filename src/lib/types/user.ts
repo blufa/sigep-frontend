@@ -6,6 +6,8 @@ export interface AppUser {
   fullName: string;
   role: Role;
   active: boolean;
+  /** Menus visibles, assignés par l'administrateur — null = aucune restriction. */
+  allowedMenus: string[] | null;
 }
 
 export interface CreateUserInput {

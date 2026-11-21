@@ -8,6 +8,8 @@ export interface LoginResponse {
   tenantId: number | null;
   fullName: string;
   role: Role;
+  /** Menus visibles, assignés par l'administrateur — null = aucune restriction. */
+  allowedMenus: string[] | null;
 }
 
 export interface AuthUser {
@@ -15,4 +17,5 @@ export interface AuthUser {
   tenantId: number | null;
   fullName: string;
   role: Role;
+  allowedMenus: string[] | null;
 }

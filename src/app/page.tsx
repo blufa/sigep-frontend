@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import jsQR from "jsqr";
 import { useQuery } from "@tanstack/react-query";
@@ -37,6 +37,22 @@ export default function Home() {
   const [showCamera, setShowCamera] = useState(false);
   const [result, setResult] = useState<PublicBadgeVerification | null>(null);
   const [photoSource, setPhotoSource] = useState<PhotoSource>(null);
+
+  // Appelée depuis la boucle de détection ci-dessous (requestAnimationFrame dans un effet), jamais
+  // pendant le rendu — déclarée avant cet effet pour que l'analyse de dépendances la voie correctement.
+  const checkToken = useCallback(async (token: string) => {
+    setIsChecking(true);
+    try {
+      const verification = await verifyBadgePublic(token);
+      setResult(verification);
+      setPhotoSource(verification.valid ? { kind: "token", value: token } : null);
+    } catch {
+      setResult({ valid: false, matricule: null, fullName: null, positionTitle: null, hierarchie: null, hasPhoto: false });
+      setPhotoSource(null);
+    } finally {
+      setIsChecking(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!showCamera) return;
@@ -109,20 +125,6 @@ export default function Home() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showCamera]);
-
-  async function checkToken(token: string) {
-    setIsChecking(true);
-    try {
-      const verification = await verifyBadgePublic(token);
-      setResult(verification);
-      setPhotoSource(verification.valid ? { kind: "token", value: token } : null);
-    } catch {
-      setResult({ valid: false, matricule: null, fullName: null, positionTitle: null, hierarchie: null, hasPhoto: false });
-      setPhotoSource(null);
-    } finally {
-      setIsChecking(false);
-    }
-  }
 
   async function checkMatricule(matricule: string) {
     setIsChecking(true);
@@ -204,7 +206,7 @@ export default function Home() {
         {showCamera ? (
           <div className="mx-auto mt-4 max-w-xs rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-sm">
             <div className="aspect-square w-full overflow-hidden rounded-xl bg-gray-900">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              { }
               <video ref={videoRef} className="h-full w-full object-cover" muted playsInline />
             </div>
             <canvas ref={canvasRef} className="hidden" />
@@ -259,7 +261,7 @@ export default function Home() {
           <p className="mx-auto max-w-md truncate text-[11px] font-medium text-gray-500">{organization.ministryName}</p>
         ) : null}
         <p className="mt-0.5 text-[11px] text-gray-400">
-          République de Guinée — SIGEP © {new Date().getFullYear()}
+          République de Guinée — SIGAP © {new Date().getFullYear()}
         </p>
       </footer>
     </div>

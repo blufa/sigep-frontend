@@ -16,6 +16,12 @@ export async function resetUserPassword(userId: number, newPassword: string): Pr
   await http.put(`/users/${userId}/password`, { newPassword });
 }
 
+/** `menuKeys: null` lève toute restriction pour cet utilisateur. */
+export async function updateUserMenus(userId: number, menuKeys: string[] | null): Promise<AppUser> {
+  const { data } = await http.put<AppUser>(`/users/${userId}/menus`, { menuKeys });
+  return data;
+}
+
 export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
   await http.put("/users/me/password", { currentPassword, newPassword });
 }

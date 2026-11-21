@@ -15,10 +15,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/layout/page-header";
-import { createUser, listUsers, resetUserPassword } from "@/lib/api/users";
+import { createUser, listUsers, resetUserPassword, updateUserMenus } from "@/lib/api/users";
 import { extractErrorMessage } from "@/lib/api/client";
 import { useAuth } from "@/providers/auth-provider";
+import { ALL_MENU_ITEMS } from "@/layout/AppSidebar";
+import { AppUser } from "@/lib/types/user";
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "Administrateur", AGENT: "Agent" };
 
@@ -37,6 +40,8 @@ export default function UsersPage() {
   const [resettingId, setResettingId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [page, setPage] = useState(0);
+  const [menusForUser, setMenusForUser] = useState<AppUser | null>(null);
+  const [checkedMenuKeys, setCheckedMenuKeys] = useState<string[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["users", page],
@@ -74,6 +79,32 @@ export default function UsersPage() {
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
+
+  const menusMutation = useMutation({
+    mutationFn: ({ id, menuKeys }: { id: number; menuKeys: string[] | null }) => updateUserMenus(id, menuKeys),
+    onSuccess: () => {
+      toast.success("Menus mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setMenusForUser(null);
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la mise à jour des menus")),
+  });
+
+  function openMenuEditor(user: AppUser) {
+    setMenusForUser(user);
+    setCheckedMenuKeys(user.allowedMenus ?? ALL_MENU_ITEMS.map((item) => item.key));
+  }
+
+  function toggleMenuKey(key: string) {
+    setCheckedMenuKeys((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
+  }
+
+  function saveMenus() {
+    if (!menusForUser) return;
+    const allKeys = ALL_MENU_ITEMS.map((item) => item.key);
+    const isUnrestricted = allKeys.every((key) => checkedMenuKeys.includes(key));
+    menusMutation.mutate({ id: menusForUser.id, menuKeys: isUnrestricted ? null : checkedMenuKeys });
+  }
 
   if (currentUser?.role !== "ADMIN") {
     return (
@@ -169,6 +200,11 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {ROLE_LABEL[user.role] ?? user.role}
+                    {user.allowedMenus ? (
+                      <p className="mt-0.5 text-xs text-warning-600 dark:text-warning-400">
+                        Accès restreint ({user.allowedMenus.length} menu{user.allowedMenus.length > 1 ? "s" : ""})
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="px-5 py-4">
                     <StatusBadge label={user.active ? "Actif" : "Inactif"} tone={user.active ? "success" : "neutral"} />
@@ -194,9 +230,14 @@ export default function UsersPage() {
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => setResettingId(user.id)}>
-                        Réinitialiser le mot de passe
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setResettingId(user.id)}>
+                          Réinitialiser le mot de passe
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => openMenuEditor(user)}>
+                          Gérer les menus
+                        </Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -208,6 +249,38 @@ export default function UsersPage() {
           <Pagination page={data.page} totalPages={data.totalPages} totalElements={data.totalItems} onPageChange={setPage} />
         ) : null}
       </Card>
+
+      <Modal isOpen={!!menusForUser} onClose={() => setMenusForUser(null)} className="max-w-md p-6">
+        <h2 className="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">
+          Menus de {menusForUser?.fullName}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Cochez les pages auxquelles ce compte a accès. Tout cocher revient à ne poser aucune
+          restriction.
+        </p>
+        <div className="mb-6 space-y-2">
+          {ALL_MENU_ITEMS.filter((item) => !item.adminOnly || menusForUser?.role === "ADMIN").map((item) => (
+            <label key={item.key} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-white/5">
+              <input
+                type="checkbox"
+                className="h-4 w-4"
+                checked={item.key === "dashboard" || checkedMenuKeys.includes(item.key)}
+                disabled={item.key === "dashboard"}
+                onChange={() => toggleMenuKey(item.key)}
+              />
+              <span>{item.label}</span>
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setMenusForUser(null)}>
+            Annuler
+          </Button>
+          <Button type="button" onClick={saveMenus} disabled={menusMutation.isPending}>
+            Enregistrer
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

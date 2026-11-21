@@ -22,13 +22,10 @@ export default function SettingsPage() {
   const [workStartTime, setWorkStartTime] = useState("");
   const [workEndTime, setWorkEndTime] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [verifyUrl, setVerifyUrl] = useState("");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setVerifyUrl(window.location.origin);
-    }
-  }, []);
+  // Initialiseur paresseux plutôt qu'un effet de montage : cette page n'est jamais rendue côté
+  // serveur (sous le tableau de bord protégé, lui-même affiché seulement après authentification
+  // côté client) — aucun risque de décalage d'hydratation à lire `window` ici directement.
+  const [verifyUrl] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""));
 
   const { data: organization, isLoading } = useQuery({
     queryKey: ["organization"],
@@ -38,6 +35,10 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (organization) {
+      // Synchronisation volontaire : copie les données chargées de façon asynchrone (useQuery)
+      // dans l'état local éditable du formulaire — ne s'exécute qu'une fois la requête résolue,
+      // pas à chaque rendu.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMinistryName(organization.ministryName ?? "");
       setServiceName(organization.serviceName ?? "");
       setWorkStartTime(organization.workStartTime?.slice(0, 5) ?? "");

@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
-import AppSidebar from "@/layout/AppSidebar";
+import AppSidebar, { resolveMenuKeyForPath } from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import { MobileTabBar } from "@/layout/MobileTabBar";
 import { useSidebar } from "@/context/SidebarContext";
@@ -36,6 +36,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, user, router]);
 
+  // Un compte restreint (menus assignés par son administrateur — voir page Utilisateurs) qui
+  // accède directement par URL à une page hors de ses menus en est renvoyé vers le tableau de bord,
+  // toujours autorisé — même règle que le filtrage de la barre latérale (AppSidebar).
+  useEffect(() => {
+    if (isLoading || !user || isSuperAdminSection || !user.allowedMenus) {
+      return;
+    }
+    const menuKey = resolveMenuKeyForPath(pathname);
+    if (menuKey && menuKey !== "dashboard" && !user.allowedMenus.includes(menuKey)) {
+      router.replace("/dashboard");
+    }
+  }, [isLoading, user, pathname, isSuperAdminSection, router]);
+
   if (isLoading || !user) {
     return null;
   }
@@ -66,7 +79,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <footer
         className={`fixed bottom-0 right-0 z-30 hidden border-t border-gray-200 bg-white py-2.5 text-center text-xs text-gray-400 transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-900 sm:block print:hidden ${footerLeft}`}
       >
-        République de Guinée — MENET-FP · SIGEP © {new Date().getFullYear()}
+        République de Guinée — MENET-FP · SIGAP © {new Date().getFullYear()}
       </footer>
 
       <div className="print:hidden">

@@ -49,10 +49,11 @@ export default function LoginPage() {
           <h2 className="mb-4 text-base font-semibold text-gray-800">Connexion</h2>
 
           <div className="mb-4">
-            <Label htmlFor="username">Identifiant</Label>
+            <Label htmlFor="username">Identifiant (téléphone ou identifiant)</Label>
             <Input
               id="username"
               autoComplete="username"
+              placeholder="Ex. 622000000"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required

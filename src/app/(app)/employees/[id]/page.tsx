@@ -6,9 +6,10 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmployeeForm, EmployeeFormValues } from "@/features/employees/employee-form";
+import { EmployeeForm, EmployeeFormValues, toEmployeeInput } from "@/features/employees/employee-form";
 import { EmployeePhotoUpload } from "@/components/employees/employee-photo-upload";
 import { getEmployee, getEmployeePhotoUrl, updateEmployee, uploadEmployeePhoto } from "@/lib/api/employees";
+import { createUser } from "@/lib/api/users";
 import { extractErrorMessage } from "@/lib/api/client";
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,13 +38,45 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
   }
 
   async function handleSubmit(values: EmployeeFormValues) {
+    if (values.createAccount) {
+      if (!values.phone.trim()) {
+        toast.error("Renseignez le téléphone de l'employé pour lui créer un compte.");
+        return;
+      }
+      if (!values.accountPassword || values.accountPassword.length < 8) {
+        toast.error("Le mot de passe du compte doit contenir au moins 8 caractères.");
+        return;
+      }
+    }
+
     try {
-      await updateEmployee(employeeId, values);
-      toast.success("Employé mis à jour");
-      router.push("/employees");
+      await updateEmployee(employeeId, toEmployeeInput(values));
     } catch (error) {
       toast.error(extractErrorMessage(error, "Échec de la mise à jour"));
+      return;
     }
+
+    if (values.createAccount) {
+      try {
+        await createUser({
+          username: values.phone.trim(),
+          fullName: `${values.firstName} ${values.lastName}`.trim(),
+          password: values.accountPassword!,
+          role: values.accountRole,
+        });
+        toast.success("Employé mis à jour — compte de connexion prêt (identifiant : son téléphone)");
+      } catch (error) {
+        toast.error(
+          extractErrorMessage(error, "Employé mis à jour, mais échec de la création du compte de connexion"),
+        );
+        router.push("/employees");
+        return;
+      }
+    } else {
+      toast.success("Employé mis à jour");
+    }
+
+    router.push("/employees");
   }
 
   return (
@@ -79,6 +112,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
               onSubmit={handleSubmit}
               submitLabel="Enregistrer les modifications"
               disableMatricule
+              showAccountCreation
             />
           )}
         </CardContent>

@@ -16,6 +16,7 @@ export function storeAuth(response: LoginResponse): void {
       tenantId: response.tenantId,
       fullName: response.fullName,
       role: response.role,
+      allowedMenus: response.allowedMenus,
     },
   };
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));

@@ -4,23 +4,35 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
+import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmployeeDetailModal } from "@/components/employees/employee-detail-modal";
 import { Pagination } from "@/components/ui/pagination";
-import { downloadEmployeeReportPdf, listEmployees } from "@/lib/api/employees";
+import { IdBadge } from "@/components/cards/id-badge";
+import { BadgeSheet } from "@/components/cards/badge-sheet";
+import { downloadEmployeeReportPdf, getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
+import { getSheetCardViews } from "@/lib/api/badges";
 import { listPositions } from "@/lib/api/positions";
+import { getOrganization } from "@/lib/api/organization";
+import { getOrganizationLogoUrlOrNull } from "@/lib/api/organization-logo";
 import { extractErrorMessage } from "@/lib/api/client";
 import { Employee } from "@/lib/types/staff";
+import { BadgeCardView } from "@/lib/types/badge";
 
 const GENRE_LABEL: Record<string, string> = { HOMME: "Homme", FEMME: "Femme" };
 
 export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [page, setPage] = useState(0);
+  const [checkedIds, setCheckedIds] = useState<number[]>([]);
+  const [badgeCards, setBadgeCards] = useState<BadgeCardView[] | null>(null);
+  const [badgePhotoUrls, setBadgePhotoUrls] = useState<(string | null)[]>([]);
+  const [isLoadingBadges, setIsLoadingBadges] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["employees", page],
@@ -30,8 +42,29 @@ export default function EmployeesPage() {
     queryKey: ["positions"],
     queryFn: () => listPositions(0, 200),
   });
+  const { data: organization } = useQuery({
+    queryKey: ["organization"],
+    queryFn: getOrganization,
+  });
+  const { data: logoUrl } = useQuery({
+    queryKey: ["organization-logo", organization?.hasLogo],
+    queryFn: getOrganizationLogoUrlOrNull,
+    enabled: Boolean(organization?.hasLogo),
+  });
 
   const positionTitleById = new Map((positions?.items ?? []).map((p) => [p.id, p.title]));
+  const pageIds = data?.items.map((e) => e.id) ?? [];
+  const allOnPageChecked = pageIds.length > 0 && pageIds.every((id) => checkedIds.includes(id));
+
+  function toggleOne(id: number) {
+    setCheckedIds((current) => (current.includes(id) ? current.filter((v) => v !== id) : [...current, id]));
+  }
+
+  function toggleAllOnPage() {
+    setCheckedIds((current) =>
+      allOnPageChecked ? current.filter((id) => !pageIds.includes(id)) : [...new Set([...current, ...pageIds])],
+    );
+  }
 
   async function handleDownloadReport() {
     try {
@@ -41,12 +74,36 @@ export default function EmployeesPage() {
     }
   }
 
+  /** Génère et affiche directement les badges des employés choisis (planche si plusieurs) — comme
+   * sur lacaeducation-ui, sans quitter la liste des employés : un bouton "Badges" suffit. */
+  async function showBadges(employeeIds: number[]) {
+    if (employeeIds.length === 0) return;
+    setIsLoadingBadges(true);
+    try {
+      const cards = await getSheetCardViews(employeeIds);
+      const photoUrls = await Promise.all(employeeIds.map((id) => getEmployeePhotoUrl(id)));
+      setBadgeCards(cards);
+      setBadgePhotoUrls(photoUrls);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Impossible de générer le badge"));
+    } finally {
+      setIsLoadingBadges(false);
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title="Employés"
         actions={
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => showBadges(checkedIds)}
+              disabled={checkedIds.length === 0 || isLoadingBadges}
+            >
+              <Printer className="mr-1.5 h-4 w-4" /> Badges{checkedIds.length > 0 ? ` (${checkedIds.length})` : ""}
+            </Button>
             <Button variant="outline" onClick={handleDownloadReport}>
               Télécharger le rapport PDF
             </Button>
@@ -62,6 +119,15 @@ export default function EmployeesPage() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-gray-800">
               <TableRow>
+                <TableCell isHeader className="w-10 px-5 py-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={allOnPageChecked}
+                    onChange={toggleAllOnPage}
+                    aria-label="Tout sélectionner"
+                  />
+                </TableCell>
                 {["Matricule", "Nom et prénom", "Genre", "Poste", "Téléphone", "Statut", ""].map((label) => (
                   <TableCell
                     key={label}
@@ -76,33 +142,53 @@ export default function EmployeesPage() {
             <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="px-5 py-4 text-sm text-gray-500">
+                  <TableCell colSpan={8} className="px-5 py-4 text-sm text-gray-500">
                     Chargement…
                   </TableCell>
                 </TableRow>
               ) : null}
               {data?.items.map((employee) => (
-                <TableRow
-                  key={employee.id}
-                  className="cursor-pointer"
-                  onClick={() => setSelectedEmployee(employee)}
-                >
-                  <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
+                <TableRow key={employee.id} className="cursor-pointer">
+                  <TableCell className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={checkedIds.includes(employee.id)}
+                      onChange={() => toggleOne(employee.id)}
+                      aria-label={`Sélectionner ${employee.lastName} ${employee.firstName}`}
+                    />
+                  </TableCell>
+                  <TableCell
+                    className="px-5 py-4 text-sm text-gray-800 dark:text-white/90"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
                     {employee.matricule}
                   </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
+                  <TableCell
+                    className="px-5 py-4 text-sm text-gray-800 dark:text-white/90"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
                     {employee.lastName} {employee.firstName}
                   </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  <TableCell
+                    className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
                     {GENRE_LABEL[employee.genre]}
                   </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  <TableCell
+                    className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
                     {employee.positionId ? positionTitleById.get(employee.positionId) ?? "—" : "—"}
                   </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                  <TableCell
+                    className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400"
+                    onClick={() => setSelectedEmployee(employee)}
+                  >
                     {employee.phone || "—"}
                   </TableCell>
-                  <TableCell className="px-5 py-4">
+                  <TableCell className="px-5 py-4" onClick={() => setSelectedEmployee(employee)}>
                     <StatusBadge
                       label={employee.active ? "Actif" : "Inactif"}
                       tone={employee.active ? "success" : "neutral"}
@@ -115,18 +201,16 @@ export default function EmployeesPage() {
                           Modifier
                         </Button>
                       </Link>
-                      <Link href={`/badges?employeeId=${employee.id}`}>
-                        <Button variant="secondary" size="sm">
-                          Badge
-                        </Button>
-                      </Link>
+                      <Button variant="secondary" size="sm" onClick={() => showBadges([employee.id])}>
+                        Badge
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
               {!isLoading && data?.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="px-5 py-4 text-sm text-gray-500">
+                  <TableCell colSpan={8} className="px-5 py-4 text-sm text-gray-500">
                     Aucun employé enregistré.
                   </TableCell>
                 </TableRow>
@@ -144,6 +228,18 @@ export default function EmployeesPage() {
         positionTitle={selectedEmployee?.positionId ? positionTitleById.get(selectedEmployee.positionId) : undefined}
         onClose={() => setSelectedEmployee(null)}
       />
+
+      <Modal isOpen={!!badgeCards} onClose={() => setBadgeCards(null)} className="max-w-4xl p-6">
+        <h2 className="mb-4 text-base font-semibold text-gray-800 dark:text-white/90">
+          {badgeCards && badgeCards.length > 1 ? "Planche de badges" : "Badge"}
+        </h2>
+        {badgeCards && badgeCards.length === 1 ? (
+          <IdBadge card={badgeCards[0]} logoUrl={logoUrl} photoUrl={badgePhotoUrls[0]} />
+        ) : null}
+        {badgeCards && badgeCards.length > 1 ? (
+          <BadgeSheet cards={badgeCards} logoUrl={logoUrl} photoUrls={badgePhotoUrls} />
+        ) : null}
+      </Modal>
     </div>
   );
 }

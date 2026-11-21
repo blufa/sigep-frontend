@@ -46,7 +46,7 @@ const AppHeader: React.FC = () => {
 
       <div className="lg:hidden">
         <Link href="/" className="text-sm font-semibold text-brand-600">
-          SIGEP
+          SIGAP
         </Link>
       </div>
 

@@ -16,7 +16,18 @@ import {
   UserCircleIcon,
 } from "../icons/index";
 
+export type MenuKey =
+  | "dashboard"
+  | "employees"
+  | "positions"
+  | "badges"
+  | "attendance"
+  | "scan"
+  | "users"
+  | "settings";
+
 type NavItem = {
+  key: MenuKey;
   name: string;
   icon: React.ReactNode;
   path: string;
@@ -24,20 +35,39 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { icon: <GridIcon />, name: "Tableau de bord", path: "/dashboard" },
-  { icon: <UserCircleIcon />, name: "Employés", path: "/employees" },
-  { icon: <ListIcon />, name: "Postes et fonctions", path: "/positions" },
-  { icon: <BoxCubeIcon />, name: "Badges", path: "/badges" },
-  { icon: <TableIcon />, name: "Pointage", path: "/attendance" },
-  { icon: <TimeIcon />, name: "Scanner un badge", path: "/attendance/scan" },
-  { icon: <PlugInIcon />, name: "Utilisateurs", path: "/users", adminOnly: true },
-  { icon: <DocsIcon />, name: "Paramètres", path: "/settings", adminOnly: true },
+  { key: "dashboard", icon: <GridIcon />, name: "Tableau de bord", path: "/dashboard" },
+  { key: "employees", icon: <UserCircleIcon />, name: "Employés", path: "/employees" },
+  { key: "positions", icon: <ListIcon />, name: "Postes et fonctions", path: "/positions" },
+  { key: "badges", icon: <BoxCubeIcon />, name: "Badges", path: "/badges" },
+  { key: "attendance", icon: <TableIcon />, name: "Pointage", path: "/attendance" },
+  { key: "scan", icon: <TimeIcon />, name: "Scanner un badge", path: "/attendance/scan" },
+  { key: "users", icon: <PlugInIcon />, name: "Utilisateurs", path: "/users", adminOnly: true },
+  { key: "settings", icon: <DocsIcon />, name: "Paramètres", path: "/settings", adminOnly: true },
 ];
 
 // Un SUPER_ADMIN ne gère aucun tenant : seule la page de gestion des services s'applique.
+// `key` n'est pas exploité pour cette liste (jamais filtrée par allowedMenus, voir isPlatformView) —
+// valeur réutilisée seulement pour satisfaire le typage commun avec `navItems`.
 const superAdminNavItems: NavItem[] = [
-  { icon: <ListIcon />, name: "Services (tenants)", path: "/super-admin/services" },
+  { key: "dashboard", icon: <ListIcon />, name: "Services (tenants)", path: "/super-admin/services" },
 ];
+
+/** Réutilisé par la page Utilisateurs pour construire les cases à cocher d'assignation de menus. */
+export const ALL_MENU_ITEMS: { key: MenuKey; label: string; adminOnly?: boolean }[] = navItems.map((nav) => ({
+  key: nav.key,
+  label: nav.name,
+  adminOnly: nav.adminOnly,
+}));
+
+/** Résout la clé de menu correspondant à un chemin (y compris ses sous-pages, ex. /employees/123 →
+ * "employees") — utilisé par `(app)/layout.tsx` pour rediriger un utilisateur restreint qui
+ * tenterait d'accéder directement (URL tapée à la main) à une page hors de ses menus assignés. */
+export function resolveMenuKeyForPath(pathname: string): MenuKey | null {
+  const match = navItems
+    .filter((nav) => pathname === nav.path || pathname.startsWith(`${nav.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)[0];
+  return match?.key ?? null;
+}
 
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
@@ -46,9 +76,15 @@ const AppSidebar: React.FC = () => {
 
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
   const isPlatformView = isSuperAdmin && impersonatedTenantId == null;
+  const allowedMenus = user?.allowedMenus;
   const visibleNavItems = isPlatformView
     ? superAdminNavItems
-    : navItems.filter((nav) => !nav.adminOnly || user?.role === "ADMIN");
+    : navItems
+        .filter((nav) => !nav.adminOnly || user?.role === "ADMIN")
+        // Menus assignés par l'administrateur (voir page Utilisateurs) — "Tableau de bord" reste
+        // toujours accessible pour qu'une restriction mal configurée ne bloque jamais complètement
+        // un compte.
+        .filter((nav) => !allowedMenus || nav.key === "dashboard" || allowedMenus.includes(nav.key));
 
   return (
     <aside
@@ -64,7 +100,7 @@ const AppSidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <span className="text-[11px] uppercase tracking-wide text-gray-400">MENET-FP</span>
-              <span className="text-lg font-bold text-brand-600">SIGEP</span>
+              <span className="text-lg font-bold text-brand-600">SIGAP</span>
             </>
           ) : (
             <span className="text-lg font-bold text-brand-600">S</span>

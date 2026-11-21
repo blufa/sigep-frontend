@@ -30,6 +30,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [impersonatedTenantId, setImpersonatedTenantIdState] = useState<number | null>(null);
 
   useEffect(() => {
+    // Lecture volontairement différée à après l'hydratation : readAuth()/getImpersonatedTenantId()
+    // lisent localStorage, absent côté serveur. `isLoading` reste à `true` jusqu'ici pour que le
+    // premier rendu client (hydratation) matche exactement le rendu serveur (ni l'un ni l'autre
+    // n'affiche de contenu authentifié) — un initialiseur paresseux casserait cette garantie.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRawUser(readAuth()?.user ?? null);
     setImpersonatedTenantIdState(getImpersonatedTenantId());
     setIsLoading(false);
@@ -50,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       tenantId: response.tenantId,
       fullName: response.fullName,
       role: response.role,
+      allowedMenus: response.allowedMenus,
     };
     setRawUser(loggedInUser);
     return loggedInUser;
@@ -67,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const user = useMemo<AuthUser | null>(() => {
     if (!rawUser) return null;
     if (isSuperAdmin && impersonatedTenantId != null) {
-      return { ...rawUser, tenantId: impersonatedTenantId, role: "ADMIN" };
+      return { ...rawUser, tenantId: impersonatedTenantId, role: "ADMIN", allowedMenus: null };
     }
     return rawUser;
   }, [rawUser, isSuperAdmin, impersonatedTenantId]);

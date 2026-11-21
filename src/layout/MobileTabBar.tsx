@@ -34,6 +34,10 @@ export function MobileTabBar() {
     return null;
   }
 
+  // Menus assignés par l'administrateur (voir page Utilisateurs) — même filtrage que AppSidebar.
+  const allowedMenus = user?.allowedMenus;
+  const tabs = MOBILE_TABS.filter((tab) => !allowedMenus || tab.key === "dashboard" || allowedMenus.includes(tab.key));
+
   return (
     <nav
       className={`fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:hidden ${
@@ -41,8 +45,8 @@ export function MobileTabBar() {
       }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${MOBILE_TABS.length + 1}, minmax(0, 1fr))` }}>
-        {MOBILE_TABS.map((item) => {
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${tabs.length + 1}, minmax(0, 1fr))` }}>
+        {tabs.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
