@@ -127,9 +127,13 @@
      barre d'adresse de Safari iOS qui apparaît/disparaît au défilement) peut dépasser la largeur
      de l'écran d'un pixel et rendre toute la page glissable horizontalement — signalé par
      l'utilisateur sur iPhone. Les tableaux gardent leur propre défilement horizontal interne
-     (overflow-x-auto sur leur conteneur), seul le débordement de la page entière est bloqué ici. */
-  html,
-  body {
+     (overflow-x-auto sur leur conteneur), seul le débordement de la page entière est bloqué ici.
+     Uniquement sur `html`, PAS sur `body` : `body` a déjà `position: relative` ci-dessous, et la
+     combinaison position:relative + overflow:hidden sur body fait perdre à iOS Safari le
+     comportement `position: fixed` de ses descendants (header/sidebar/barre d'onglets se mettent
+     à défiler avec le contenu au lieu de rester ancrés — régression constatée par l'utilisateur
+     après un premier essai qui ajoutait aussi `overflow-x-hidden` sur body). */
+  html {
     @apply overflow-x-hidden;
   }
 
