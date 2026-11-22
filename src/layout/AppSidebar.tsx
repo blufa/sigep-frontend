@@ -69,6 +69,17 @@ export function resolveMenuKeyForPath(pathname: string): MenuKey | null {
   return match?.key ?? null;
 }
 
+/** Première page accessible à un compte (ex. un vigile restreint à "Scanner un badge" doit
+ * atterrir là après connexion, pas sur un tableau de bord qu'il n'a pas le droit de voir) —
+ * utilisé par la page de connexion et par le garde de route de `(app)/layout.tsx`. */
+export function resolveDefaultPathForUser(allowedMenus: string[] | null | undefined): string {
+  if (!allowedMenus || allowedMenus.length === 0) {
+    return "/dashboard";
+  }
+  const firstAllowed = navItems.find((nav) => allowedMenus.includes(nav.key));
+  return firstAllowed?.path ?? "/dashboard";
+}
+
 const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
@@ -81,10 +92,9 @@ const AppSidebar: React.FC = () => {
     ? superAdminNavItems
     : navItems
         .filter((nav) => !nav.adminOnly || user?.role === "ADMIN")
-        // Menus assignés par l'administrateur (voir page Utilisateurs) — "Tableau de bord" reste
-        // toujours accessible pour qu'une restriction mal configurée ne bloque jamais complètement
-        // un compte.
-        .filter((nav) => !allowedMenus || nav.key === "dashboard" || allowedMenus.includes(nav.key));
+        // Menus assignés par l'administrateur (voir page Utilisateurs) — ex. un compte vigile peut
+        // n'avoir accès qu'à "Scanner un badge", sans voir le tableau de bord ni les effectifs.
+        .filter((nav) => !allowedMenus || allowedMenus.includes(nav.key));
 
   return (
     <aside

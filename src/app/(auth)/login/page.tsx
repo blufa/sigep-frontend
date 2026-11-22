@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/providers/auth-provider";
 import { extractErrorMessage } from "@/lib/api/client";
+import { resolveDefaultPathForUser } from "@/layout/AppSidebar";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +23,11 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const loggedInUser = await login(username, password);
-      router.replace(loggedInUser.role === "SUPER_ADMIN" ? "/super-admin/services" : "/dashboard");
+      router.replace(
+        loggedInUser.role === "SUPER_ADMIN"
+          ? "/super-admin/services"
+          : resolveDefaultPathForUser(loggedInUser.allowedMenus),
+      );
     } catch (error) {
       toast.error(extractErrorMessage(error, "Identifiant ou mot de passe incorrect"));
     } finally {
@@ -34,6 +39,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 border-b-4 border-brand-500 pb-4 text-center">
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-gray-200 bg-white shadow-theme-xs">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-mena-etfp.png" alt="Logo du ministère" className="h-full w-full rounded-full object-contain p-1.5" />
+          </div>
           <p className="text-xs uppercase tracking-wide text-gray-500">
             République de Guinée — MENET-FP
           </p>

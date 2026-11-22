@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import AppHeader from "@/layout/AppHeader";
-import AppSidebar, { resolveMenuKeyForPath } from "@/layout/AppSidebar";
+import AppSidebar, { resolveDefaultPathForUser, resolveMenuKeyForPath } from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
 import { MobileTabBar } from "@/layout/MobileTabBar";
 import { useSidebar } from "@/context/SidebarContext";
@@ -37,15 +37,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [isLoading, user, router]);
 
   // Un compte restreint (menus assignés par son administrateur — voir page Utilisateurs) qui
-  // accède directement par URL à une page hors de ses menus en est renvoyé vers le tableau de bord,
-  // toujours autorisé — même règle que le filtrage de la barre latérale (AppSidebar).
+  // accède directement par URL à une page hors de ses menus en est renvoyé vers sa première page
+  // autorisée (ex. un vigile sans accès au tableau de bord atterrit sur "Scanner un badge") —
+  // même règle que le filtrage de la barre latérale (AppSidebar).
   useEffect(() => {
     if (isLoading || !user || isSuperAdminSection || !user.allowedMenus) {
       return;
     }
     const menuKey = resolveMenuKeyForPath(pathname);
-    if (menuKey && menuKey !== "dashboard" && !user.allowedMenus.includes(menuKey)) {
-      router.replace("/dashboard");
+    if (menuKey && !user.allowedMenus.includes(menuKey)) {
+      router.replace(resolveDefaultPathForUser(user.allowedMenus));
     }
   }, [isLoading, user, pathname, isSuperAdminSection, router]);
 
