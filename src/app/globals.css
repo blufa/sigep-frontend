@@ -122,6 +122,17 @@
   [role="button"]:not(:disabled) {
     cursor: pointer;
   }
+  /* Garde-fou mobile : sans ça, un graphique ApexCharts qui recalcule sa largeur avant que son
+     conteneur ait fini de se dimensionner (notamment lors du redimensionnement déclenché par la
+     barre d'adresse de Safari iOS qui apparaît/disparaît au défilement) peut dépasser la largeur
+     de l'écran d'un pixel et rendre toute la page glissable horizontalement — signalé par
+     l'utilisateur sur iPhone. Les tableaux gardent leur propre défilement horizontal interne
+     (overflow-x-auto sur leur conteneur), seul le débordement de la page entière est bloqué ici. */
+  html,
+  body {
+    @apply overflow-x-hidden;
+  }
+
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
   }
