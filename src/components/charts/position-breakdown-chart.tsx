@@ -22,11 +22,14 @@ export function PositionBreakdownChart({ data }: { data: { label: string; count:
   };
 
   return (
-    <ReactApexChart
-      options={options}
-      series={[{ name: "Employés", data: sorted.map((item) => item.count) }]}
-      type="bar"
-      height={Math.max(220, sorted.length * 44)}
-    />
+    <div className="overflow-hidden">
+      <ReactApexChart
+        options={options}
+        series={[{ name: "Employés", data: sorted.map((item) => item.count) }]}
+        type="bar"
+        height={Math.max(220, sorted.length * 44)}
+        width="100%"
+      />
+    </div>
   );
 }

@@ -24,6 +24,12 @@ export async function getAttendancePunchPhotoUrl(punchId: number): Promise<strin
   }
 }
 
+/** Marque un pointage comme suspect — déclenché par le vigile quand la photo caméra ne correspond
+ * visiblement pas à la photo officielle (badge probablement laissé par un employé absent). */
+export async function flagAttendancePunch(punchId: number, flagged = true): Promise<void> {
+  await http.put(`/attendance/${punchId}/flag`, null, { params: { flagged } });
+}
+
 export async function getAttendanceSummary(): Promise<AttendanceSummary> {
   const { data } = await http.get<AttendanceSummary>("/attendance/summary");
   return data;

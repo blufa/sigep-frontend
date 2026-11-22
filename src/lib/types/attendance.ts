@@ -1,6 +1,7 @@
 export type Direction = "ENTREE" | "SORTIE";
 
 export interface ScanResult {
+  id: number;
   employeeId: number;
   matricule: string;
   fullName: string;
@@ -17,6 +18,8 @@ export interface AttendanceEntry {
   scannedAt: string;
   source: string;
   hasPhoto: boolean;
+  /** Signalé par le vigile comme suspect (photo caméra ≠ photo officielle) — voir page Scanner. */
+  flagged: boolean;
 }
 
 export interface AttendanceSummary {

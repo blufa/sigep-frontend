@@ -44,5 +44,9 @@ export function AttendanceDonutChart({
     return <p className="text-sm text-gray-500">Aucune donnée de présence pour l&apos;instant.</p>;
   }
 
-  return <ReactApexChart options={options} series={series} type="donut" height={300} />;
+  return (
+    <div className="overflow-hidden">
+      <ReactApexChart options={options} series={series} type="donut" height={300} width="100%" />
+    </div>
+  );
 }

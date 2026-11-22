@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import jsQR from "jsqr";
 import { useQuery } from "@tanstack/react-query";
-import { Camera, Keyboard, LogIn, Shield, ShieldCheck, ShieldX, User } from "lucide-react";
+import { Camera, Keyboard, LogIn, ShieldCheck, ShieldX, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -168,12 +168,12 @@ export default function Home() {
 
       <div className="mx-auto max-w-xl px-4 py-6 text-center">
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-gray-200 bg-white shadow-theme-xs">
-          {organization?.hasLogo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={publicOrganizationLogoUrl()} alt="Logo du ministère" className="h-full w-full rounded-full object-contain p-1.5" />
-          ) : (
-            <Shield className="h-8 w-8 text-brand-500" strokeWidth={1.5} />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={organization?.hasLogo ? publicOrganizationLogoUrl() : "/logo-mena-etfp.png"}
+            alt="Logo du ministère"
+            className="h-full w-full rounded-full object-contain p-1.5"
+          />
         </div>
         <p className="text-xs font-bold uppercase tracking-wider text-gray-500">République de Guinée</p>
         <h1 className="mt-1 text-2xl font-extrabold text-gray-800 sm:text-3xl">Vérification de badge agent</h1>

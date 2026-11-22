@@ -101,6 +101,10 @@ export default function UsersPage() {
 
   function saveMenus() {
     if (!menusForUser) return;
+    if (checkedMenuKeys.length === 0) {
+      toast.error("Il faut laisser au moins un menu accessible");
+      return;
+    }
     const allKeys = ALL_MENU_ITEMS.map((item) => item.key);
     const isUnrestricted = allKeys.every((key) => checkedMenuKeys.includes(key));
     menusMutation.mutate({ id: menusForUser.id, menuKeys: isUnrestricted ? null : checkedMenuKeys });
@@ -255,8 +259,9 @@ export default function UsersPage() {
           Menus de {menusForUser?.fullName}
         </h2>
         <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Cochez les pages auxquelles ce compte a accès. Tout cocher revient à ne poser aucune
-          restriction.
+          Cochez les pages auxquelles ce compte a accès (au moins une). Tout cocher revient à ne
+          poser aucune restriction — utile par exemple pour un compte vigile limité à &laquo;
+          Scanner un badge &raquo;.
         </p>
         <div className="mb-6 space-y-2">
           {ALL_MENU_ITEMS.filter((item) => !item.adminOnly || menusForUser?.role === "ADMIN").map((item) => (
@@ -264,8 +269,7 @@ export default function UsersPage() {
               <input
                 type="checkbox"
                 className="h-4 w-4"
-                checked={item.key === "dashboard" || checkedMenuKeys.includes(item.key)}
-                disabled={item.key === "dashboard"}
+                checked={checkedMenuKeys.includes(item.key)}
                 onChange={() => toggleMenuKey(item.key)}
               />
               <span>{item.label}</span>

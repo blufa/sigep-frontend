@@ -36,7 +36,7 @@ export function MobileTabBar() {
 
   // Menus assignés par l'administrateur (voir page Utilisateurs) — même filtrage que AppSidebar.
   const allowedMenus = user?.allowedMenus;
-  const tabs = MOBILE_TABS.filter((tab) => !allowedMenus || tab.key === "dashboard" || allowedMenus.includes(tab.key));
+  const tabs = MOBILE_TABS.filter((tab) => !allowedMenus || allowedMenus.includes(tab.key));
 
   return (
     <nav
