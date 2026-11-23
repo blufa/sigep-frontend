@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { Camera } from "lucide-react";
+import { toast } from "sonner";
+import { Camera, Flag, Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectSearch } from "@/components/ui/select-search";
 import { Input } from "@/components/ui/input";
@@ -15,13 +17,19 @@ import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/layout/page-header";
 import { getAttendanceHistory, getAttendancePunchPhotoUrl } from "@/lib/api/attendance";
 import { listEmployees } from "@/lib/api/employees";
+import { extractErrorMessage } from "@/lib/api/client";
+import { AttendanceEntry } from "@/lib/types/attendance";
 
 export default function AttendanceHistoryPage() {
   const [employeeId, setEmployeeId] = useState<string>("");
   const [date, setDate] = useState<string>("");
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
   const [viewingPhotoName, setViewingPhotoName] = useState<string | null>(null);
+  const [printEntries, setPrintEntries] = useState<AttendanceEntry[] | null>(null);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+  const shouldPrintRef = useRef(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees"],
@@ -53,6 +61,38 @@ export default function AttendanceHistoryPage() {
     setPage(0);
   }
 
+  const visibleEntries = flaggedOnly ? (data?.items ?? []).filter((entry) => entry.flagged) : (data?.items ?? []);
+  const selectedEmployeeLabel = employees?.items.find((e) => String(e.id) === employeeId);
+
+  // Déclenché une fois que `printEntries` (liste complète, non paginée, pour les critères actuels)
+  // est en place — on ne peut pas appeler window.print() juste après setPrintEntries() dans
+  // handlePrint, le rendu du bloc d'impression n'aurait pas encore eu lieu.
+  useEffect(() => {
+    if (shouldPrintRef.current && printEntries) {
+      shouldPrintRef.current = false;
+      window.print();
+    }
+  }, [printEntries]);
+
+  async function handlePrint() {
+    setIsPreparingPrint(true);
+    try {
+      const full = await getAttendanceHistory({
+        employeeId: employeeId ? Number(employeeId) : undefined,
+        from,
+        to,
+        page: 0,
+        size: 1000,
+      });
+      shouldPrintRef.current = true;
+      setPrintEntries(flaggedOnly ? full.items.filter((entry) => entry.flagged) : full.items);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec de la préparation de l'impression"));
+    } finally {
+      setIsPreparingPrint(false);
+    }
+  }
+
   async function handleViewPhoto(punchId: number, fullName: string) {
     const url = await getAttendancePunchPhotoUrl(punchId);
     if (url) {
@@ -63,9 +103,18 @@ export default function AttendanceHistoryPage() {
 
   return (
     <div>
-      <PageHeader title="Pointage" />
+      <div className="print:hidden">
+        <PageHeader
+          title="Pointage"
+          actions={
+            <Button variant="outline" onClick={handlePrint} disabled={isPreparingPrint}>
+              <Printer className="h-4 w-4" /> {isPreparingPrint ? "Préparation…" : "Imprimer"}
+            </Button>
+          }
+        />
+      </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 print:hidden">
         <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
           <div>
             <Label htmlFor="filter-employee">Employé</Label>
@@ -85,10 +134,19 @@ export default function AttendanceHistoryPage() {
             <Label htmlFor="filter-date">Date</Label>
             <Input id="filter-date" type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} />
           </div>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              className="h-4 w-4"
+              checked={flaggedOnly}
+              onChange={(e) => setFlaggedOnly(e.target.checked)}
+            />
+            Pointages signalés uniquement
+          </label>
         </div>
       </Card>
 
-      <Card>
+      <Card className="print:hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-gray-800">
@@ -112,8 +170,8 @@ export default function AttendanceHistoryPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {data?.items.map((entry) => (
-                <TableRow key={entry.id}>
+              {visibleEntries.map((entry) => (
+                <TableRow key={entry.id} className={entry.flagged ? "bg-error-50/40 dark:bg-error-500/5" : undefined}>
                   <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {dayjs(entry.scannedAt).format("DD/MM/YYYY HH:mm:ss")}
                   </TableCell>
@@ -122,6 +180,11 @@ export default function AttendanceHistoryPage() {
                   </TableCell>
                   <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
                     {entry.fullName}
+                    {entry.flagged ? (
+                      <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-error-600">
+                        <Flag className="h-3 w-3" /> Signalé
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell className="px-5 py-4">
                     <StatusBadge
@@ -147,7 +210,7 @@ export default function AttendanceHistoryPage() {
                   </TableCell>
                 </TableRow>
               ))}
-              {!isLoading && data?.items.length === 0 ? (
+              {!isLoading && visibleEntries.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
                     Aucun pointage pour ces critères.
@@ -161,6 +224,58 @@ export default function AttendanceHistoryPage() {
           <Pagination page={data.page} totalPages={data.totalPages} totalElements={data.totalItems} onPageChange={setPage} />
         ) : null}
       </Card>
+
+      {/* Visible uniquement à l'impression — liste complète (non paginée) correspondant aux
+          filtres actuels, voir handlePrint. */}
+      {printEntries ? (
+        <div className="hidden print:block">
+          <div className="mb-4 text-center">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              République de Guinée — MENET-FP · SIGAP
+            </p>
+            <h1 className="mt-1 text-lg font-semibold text-gray-800">Historique des pointages</h1>
+            <p className="mt-1 text-xs text-gray-500">
+              {selectedEmployeeLabel ? `${selectedEmployeeLabel.lastName} ${selectedEmployeeLabel.firstName}` : "Tous les employés"}
+              {date ? ` — ${dayjs(date).format("DD/MM/YYYY")}` : ""}
+              {flaggedOnly ? " — signalés uniquement" : ""}
+              {" · Édité le "}
+              {dayjs().format("DD/MM/YYYY HH:mm")}
+            </p>
+          </div>
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b-2 border-gray-800">
+                {["Date et heure", "Matricule", "Employé", "Sens", "Source"].map((label) => (
+                  <th key={label} className="px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {printEntries.map((entry) => (
+                <tr key={entry.id} className="border-b border-gray-200">
+                  <td className="px-2 py-1.5">{dayjs(entry.scannedAt).format("DD/MM/YYYY HH:mm:ss")}</td>
+                  <td className="px-2 py-1.5">{entry.matricule ?? "—"}</td>
+                  <td className="px-2 py-1.5">
+                    {entry.fullName}
+                    {entry.flagged ? " (signalé)" : ""}
+                  </td>
+                  <td className="px-2 py-1.5">{entry.direction === "ENTREE" ? "Entrée" : "Sortie"}</td>
+                  <td className="px-2 py-1.5">{entry.source}</td>
+                </tr>
+              ))}
+              {printEntries.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-2 py-4 text-center text-gray-500">
+                    Aucun pointage pour ces critères.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <Modal
         isOpen={viewingPhotoUrl !== null}

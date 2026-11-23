@@ -4,12 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import jsQR from "jsqr";
 import { toast } from "sonner";
-import { Camera, VideoOff } from "lucide-react";
+import { Camera, Flag, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SelectSearch } from "@/components/ui/select-search";
 import { PageHeader } from "@/components/layout/page-header";
-import { scanBadge, scanManual } from "@/lib/api/attendance";
+import { flagAttendancePunch, scanBadge, scanManual } from "@/lib/api/attendance";
 import { getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
 import { Direction } from "@/lib/types/attendance";
@@ -17,10 +17,13 @@ import { Direction } from "@/lib/types/attendance";
 const COOLDOWN_MS = 8000;
 /** Délai laissé à l'agent pour baisser son badge et regarder la caméra avant la capture du
  * visage — sans ça, la photo prise à l'instant même du scan ne montre que le badge levé devant
- * l'objectif, pas le visage (signalé par l'utilisateur). */
-const FACE_CAPTURE_DELAY_SECONDS = 3;
+ * l'objectif, pas le visage (signalé par l'utilisateur). Porté à 6s (au lieu de 3s initialement) :
+ * le vigile a aussi besoin de temps pour repositionner la caméra correctement, pas seulement
+ * l'agent pour baisser son badge (signalé par l'utilisateur après test en conditions réelles). */
+const FACE_CAPTURE_DELAY_SECONDS = 6;
 
 interface LastResult {
+  punchId: number;
   employeeId: number;
   fullName: string;
   direction: Direction;
@@ -30,6 +33,9 @@ interface LastResult {
   /** Photo officielle déjà enregistrée pour cet employé (celle du badge) — à comparer visuellement
    * avec la photo caméra ci-dessus pour confirmer sur-le-champ que c'est bien la bonne personne. */
   officialPhotoUrl: string | null;
+  /** Vrai une fois que le vigile a cliqué "Signaler ce pointage" (badge laissé par un employé
+   * absent, visages ne correspondant pas) — voir page Utilisateurs > historique pour la revue. */
+  flagged: boolean;
 }
 
 type Stage = "scanning" | "countdown" | "submitting";
@@ -50,6 +56,7 @@ export default function ScanPage() {
   const [isPunchingManually, setIsPunchingManually] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [cameraOn, setCameraOn] = useState(true);
+  const [isFlagging, setIsFlagging] = useState(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees", "scan"],
@@ -77,12 +84,14 @@ export default function ScanPage() {
         const result = await scanBadge(token, "QR", photoBase64);
         const officialPhotoUrl = await getEmployeePhotoUrl(result.employeeId);
         setLastResult({
+          punchId: result.id,
           employeeId: result.employeeId,
           fullName: result.fullName,
           direction: result.direction,
           scannedAt: result.scannedAt,
           capturedPhotoUrl: photoBase64,
           officialPhotoUrl,
+          flagged: false,
         });
         if (result.direction === "ENTREE") {
           toast.success(`${result.fullName} — Entrée enregistrée`);
@@ -234,12 +243,14 @@ export default function ScanPage() {
       const result = await scanManual(Number(manualEmployeeId));
       const officialPhotoUrl = await getEmployeePhotoUrl(result.employeeId);
       setLastResult({
+        punchId: result.id,
         employeeId: result.employeeId,
         fullName: result.fullName,
         direction: result.direction,
         scannedAt: result.scannedAt,
         capturedPhotoUrl: null,
         officialPhotoUrl,
+        flagged: false,
       });
       toast.success(`${result.fullName} — ${result.direction === "ENTREE" ? "Entrée" : "Sortie"} enregistrée`);
       setManualEmployeeId("");
@@ -263,6 +274,20 @@ export default function ScanPage() {
       setCameraError(null);
     }
     setCameraOn((current) => !current);
+  }
+
+  async function handleFlagPunch() {
+    if (!lastResult) return;
+    setIsFlagging(true);
+    try {
+      await flagAttendancePunch(lastResult.punchId);
+      setLastResult({ ...lastResult, flagged: true });
+      toast.success("Pointage signalé — un administrateur pourra le vérifier");
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec du signalement"));
+    } finally {
+      setIsFlagging(false);
+    }
   }
 
   return (
@@ -381,6 +406,24 @@ export default function ScanPage() {
                         Aucune photo officielle enregistrée pour cet employé — comparaison impossible.
                       </p>
                     ) : null}
+
+                    <div className="mt-4">
+                      {lastResult.flagged ? (
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-error-600">
+                          <Flag className="h-3.5 w-3.5" /> Pointage signalé pour vérification
+                        </p>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleFlagPunch}
+                          disabled={isFlagging}
+                        >
+                          <Flag className="h-3.5 w-3.5" /> Les visages ne correspondent pas — signaler
+                        </Button>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <p className="mt-3 text-xs text-gray-400">
