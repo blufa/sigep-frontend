@@ -103,9 +103,23 @@ export default function UsersPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la mise à jour des menus")),
   });
 
+  /** Menus assignés réellement applicables au rôle de l'utilisateur — un compte Agent ne peut de
+   * toute façon jamais voir les pages réservées aux administrateurs (Utilisateurs, Paramètres),
+   * quand bien même ces clés traîneraient encore dans ses menus enregistrés (ex. après un
+   * changement de rôle). Sans ce filtre, le décompte affiché ("Accès restreint (N menus)") compte
+   * des menus inaccessibles en pratique, ce qui ne correspond pas à l'accès réel du compte. */
+  function applicableMenuKeys(user: AppUser): string[] {
+    const allowed = user.allowedMenus;
+    if (!allowed) return ALL_MENU_ITEMS.map((item) => item.key);
+    return allowed.filter((key) => {
+      const item = ALL_MENU_ITEMS.find((i) => i.key === key);
+      return item && (!item.adminOnly || user.role === "ADMIN");
+    });
+  }
+
   function openMenuEditor(user: AppUser) {
     setMenusForUser(user);
-    setCheckedMenuKeys(user.allowedMenus ?? ALL_MENU_ITEMS.map((item) => item.key));
+    setCheckedMenuKeys(applicableMenuKeys(user));
   }
 
   function toggleMenuKey(key: string) {
@@ -230,7 +244,7 @@ export default function UsersPage() {
                     {ROLE_LABEL[user.role] ?? user.role}
                     {user.allowedMenus ? (
                       <p className="mt-0.5 text-xs text-warning-600 dark:text-warning-400">
-                        Accès restreint ({user.allowedMenus.length} menu{user.allowedMenus.length > 1 ? "s" : ""})
+                        Accès restreint ({applicableMenuKeys(user).length} menu{applicableMenuKeys(user).length > 1 ? "s" : ""})
                       </p>
                     ) : null}
                   </TableCell>
@@ -289,11 +303,6 @@ export default function UsersPage() {
         <h2 className="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">
           Menus de {menusForUser?.fullName}
         </h2>
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Cochez les pages auxquelles ce compte a accès (au moins une). Tout cocher revient à ne
-          poser aucune restriction — utile par exemple pour un compte vigile limité à &laquo;
-          Scanner un badge &raquo;.
-        </p>
         <div className="mb-6 space-y-2">
           {ALL_MENU_ITEMS.filter((item) => !item.adminOnly || menusForUser?.role === "ADMIN").map((item) => (
             <label key={item.key} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-white/5">
