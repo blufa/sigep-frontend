@@ -59,7 +59,7 @@ export function IdBadge({
             <div className="flex-1" style={{ background: "#009460" }} />
           </div>
 
-          <div className="flex flex-col items-center gap-1.5 px-5 pb-3 pt-6 text-center print:gap-[0.27mm] print:px-[3.6mm] print:pb-[0.9mm] print:pt-[4.5mm]">
+          <div className="flex flex-col items-center gap-1.5 px-5 pb-3 pt-4 text-center print:gap-[0.27mm] print:px-[3.6mm] print:pb-[0.9mm] print:pt-[3mm]">
             <div className="flex items-center gap-2 print:gap-[0.36mm]">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -72,17 +72,17 @@ export function IdBadge({
                 />
               )}
               <div className="text-left">
-                <p className="text-[10px] font-extrabold tracking-wider print:text-[1.8mm]">RÉPUBLIQUE DE GUINÉE</p>
-                <p className="text-[7.5px] font-medium print:text-[1.35mm]" style={{ color: MUTED }}>
+                <p className="text-[13px] font-extrabold tracking-wider print:text-[2.34mm]">RÉPUBLIQUE DE GUINÉE</p>
+                <p className="text-[10px] font-medium print:text-[1.8mm]" style={{ color: MUTED }}>
                   Travail – Justice – Solidarité
                 </p>
               </div>
             </div>
-            <p className="text-[8px] font-bold uppercase leading-tight print:text-[1.44mm]">
+            <p className="text-[10.5px] font-bold uppercase leading-tight print:text-[1.89mm]">
               {card.ministryName ?? DEFAULT_MINISTRY_NAME}
             </p>
             <p
-              className="w-full border-t pt-1.5 text-[7.5px] font-semibold uppercase leading-tight print:pt-[0.27mm] print:text-[1.35mm]"
+              className="w-full border-t pt-1.5 text-[10px] font-semibold uppercase leading-tight print:pt-[0.27mm] print:text-[1.8mm]"
               style={{ color: ACCENT, borderColor: "#DDE2E6" }}
             >
               {card.serviceName ?? DEFAULT_SERVICE_NAME}
@@ -101,48 +101,50 @@ export function IdBadge({
                 <User className="h-10 w-10 print:h-[7.2mm] print:w-[7.2mm]" style={{ color: MUTED }} strokeWidth={1.25} />
               )}
             </div>
-            {/* gap-4 (au lieu de gap-2) sépare davantage "FONCTION" du nom au-dessus — demande
-                explicite : "faire descendre un peu FONCTION Directeur Général". */}
-            <div className="flex min-w-0 flex-col gap-4 pt-1 print:gap-[2.1mm] print:pt-[0.9mm]">
+            {/* gap-3 sépare "FONCTION" du nom au-dessus (demande explicite : "faire descendre un peu
+                FONCTION Directeur Général") — réduit depuis gap-4 pour regagner un peu de hauteur
+                suite à l'agrandissement des polices (sinon le pied de carte déborde, la
+                "déformation" déjà signalée une fois). */}
+            <div className="flex min-w-0 flex-col gap-3 pt-1 print:gap-[1.3mm] print:pt-[0.9mm]">
               <div>
-                <p className="text-[15px] font-semibold print:text-[2.7mm]" style={{ color: MUTED }}>
+                <p className="text-[18px] font-semibold print:text-[3.24mm]" style={{ color: MUTED }}>
                   {firstName}
                 </p>
-                <p className="break-words text-[15px] font-extrabold uppercase leading-tight print:text-[2.7mm]">
+                <p className="break-words text-[18px] font-extrabold uppercase leading-tight print:text-[3.24mm]">
                   {lastName}
                 </p>
               </div>
               <div>
-                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
                   Fonction
                 </p>
-                <p className="text-[10px] font-semibold leading-tight print:text-[1.8mm]">{card.positionTitle ?? "—"}</p>
+                <p className="text-[13px] font-semibold leading-tight print:text-[2.34mm]">{card.positionTitle ?? "—"}</p>
               </div>
             </div>
           </div>
 
           <div
-            className="mx-5 mt-5 mb-5 flex items-center gap-3 rounded-xl p-2 print:mx-[3.6mm] print:mt-[2.2mm] print:mb-[2.2mm] print:gap-[0.54mm] print:rounded-[0.7mm] print:p-[0.36mm]"
+            className="mx-5 mt-3 mb-3 flex items-center gap-3 rounded-xl p-2 print:mx-[3.6mm] print:mt-[1.3mm] print:mb-[1.3mm] print:gap-[0.54mm] print:rounded-[0.7mm] print:p-[0.36mm]"
             style={{ background: "#F4F6F7" }}
           >
             <div className="flex h-[104px] w-[104px] shrink-0 items-center justify-center rounded-md bg-white p-1 print:h-[18.7mm] print:w-[18.7mm] print:rounded-[0.5mm] print:p-[0.18mm]">
               <QRCodeSVG value={card.qrToken} size={94} level="M" marginSize={0} className="h-full w-full" />
             </div>
             <div className="flex min-w-0 flex-col gap-1.5 print:gap-[0.27mm]">
-              <p className="text-[9px] font-bold leading-tight print:text-[1.62mm]">
+              <p className="text-[12px] font-bold leading-tight print:text-[2.16mm]">
                 Scanner à l&apos;arrivée et au départ
               </p>
               <div>
-                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
                   Matricule
                 </p>
-                <p className="font-mono text-[11px] font-bold leading-tight print:text-[1.98mm]">{card.matricule}</p>
+                <p className="font-mono text-[14px] font-bold leading-tight print:text-[2.52mm]">{card.matricule}</p>
               </div>
               <div>
-                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
+                <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
                   Hiérarchie
                 </p>
-                <p className="text-[9px] font-semibold leading-tight print:text-[1.62mm]">{card.hierarchie ?? "—"}</p>
+                <p className="text-[12px] font-semibold leading-tight print:text-[2.16mm]">{card.hierarchie ?? "—"}</p>
               </div>
             </div>
           </div>
@@ -159,8 +161,8 @@ export function IdBadge({
             className="flex h-[34px] shrink-0 items-center justify-between px-5 text-white print:h-[6.1mm] print:px-[3.6mm]"
             style={{ background: ACCENT }}
           >
-            <p className="text-[12px] font-extrabold tracking-[0.2em] print:text-[2.16mm]">BADGE AGENT</p>
-            {card.city ? <p className="text-[7.5px] font-semibold opacity-85 print:text-[1.35mm]">{card.city}</p> : null}
+            <p className="text-[15px] font-extrabold tracking-[0.2em] print:text-[2.79mm]">BADGE AGENT</p>
+            {card.city ? <p className="text-[10px] font-semibold opacity-85 print:text-[1.8mm]">{card.city}</p> : null}
           </div>
         </div>
       </div>
