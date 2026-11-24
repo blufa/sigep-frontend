@@ -2,8 +2,10 @@ import { http } from "@/lib/api/client";
 import { PageResponse } from "@/lib/types/pagination";
 import { Employee, EmployeeInput } from "@/lib/types/staff";
 
-export async function listEmployees(page = 0, size = 50): Promise<PageResponse<Employee>> {
-  const { data } = await http.get<PageResponse<Employee>>("/employees", { params: { page, size } });
+export async function listEmployees(page = 0, size = 50, q?: string): Promise<PageResponse<Employee>> {
+  const { data } = await http.get<PageResponse<Employee>>("/employees", {
+    params: { page, size, q: q && q.trim() ? q.trim() : undefined },
+  });
   return data;
 }
 
