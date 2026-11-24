@@ -2,8 +2,10 @@ import { http } from "@/lib/api/client";
 import { PageResponse } from "@/lib/types/pagination";
 import { AppUser, CreateUserInput } from "@/lib/types/user";
 
-export async function listUsers(page = 0, size = 50): Promise<PageResponse<AppUser>> {
-  const { data } = await http.get<PageResponse<AppUser>>("/users", { params: { page, size } });
+export async function listUsers(page = 0, size = 50, q?: string): Promise<PageResponse<AppUser>> {
+  const { data } = await http.get<PageResponse<AppUser>>("/users", {
+    params: { page, size, q: q && q.trim() ? q.trim() : undefined },
+  });
   return data;
 }
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Printer } from "lucide-react";
+import { Printer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -29,14 +29,26 @@ const GENRE_LABEL: Record<string, string> = { HOMME: "Homme", FEMME: "Femme" };
 export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [page, setPage] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [checkedIds, setCheckedIds] = useState<number[]>([]);
   const [badgeCards, setBadgeCards] = useState<BadgeCardView[] | null>(null);
   const [badgePhotoUrls, setBadgePhotoUrls] = useState<(string | null)[]>([]);
   const [isLoadingBadges, setIsLoadingBadges] = useState(false);
 
+  // Léger délai avant d'interroger l'API le temps que l'utilisateur finisse de taper, pour ne pas
+  // déclencher une requête à chaque frappe.
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["employees", page],
-    queryFn: () => listEmployees(page, 20),
+    queryKey: ["employees", page, search],
+    queryFn: () => listEmployees(page, 20, search),
   });
   const { data: positions } = useQuery({
     queryKey: ["positions"],
@@ -113,6 +125,17 @@ export default function EmployeesPage() {
           </div>
         }
       />
+
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Rechercher par nom, matricule ou téléphone…"
+          className="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pr-4 pl-10 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10"
+        />
+      </div>
 
       <Card>
         <div className="overflow-x-auto">
@@ -211,7 +234,7 @@ export default function EmployeesPage() {
               {!isLoading && data?.items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="px-5 py-4 text-sm text-gray-500">
-                    Aucun employé enregistré.
+                    {search ? "Aucun employé ne correspond à cette recherche." : "Aucun employé enregistré."}
                   </TableCell>
                 </TableRow>
               ) : null}

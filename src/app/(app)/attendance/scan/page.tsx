@@ -4,9 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import jsQR from "jsqr";
 import { toast } from "sonner";
-import { Camera, Flag, VideoOff } from "lucide-react";
+import { Camera, Flag, Info, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { SelectSearch } from "@/components/ui/select-search";
 import { PageHeader } from "@/components/layout/page-header";
 import { flagAttendancePunch, scanBadge, scanManual } from "@/lib/api/attendance";
@@ -57,6 +59,8 @@ export default function ScanPage() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [cameraOn, setCameraOn] = useState(true);
   const [isFlagging, setIsFlagging] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [deviceId, setDeviceId] = useState("");
 
   const { data: employees } = useQuery({
     queryKey: ["employees", "scan"],
@@ -164,7 +168,15 @@ export default function ScanPage() {
 
     async function start() {
       try {
-        const acquired = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        // Préférence pour la caméra arrière par défaut (scan de badge + photo de contrôle — jamais
+        // la caméra selfie) — `ideal` et non `exact` : une contrainte stricte fait échouer
+        // `getUserMedia` (ou renvoie un flux noir sur certains navigateurs) dès qu'aucune caméra ne
+        // se déclare explicitement "environment" (signalé par l'utilisateur), ce que `ideal` tolère
+        // en se repliant sur la caméra par défaut. Un appareil choisi explicitement dans la liste
+        // ci-dessous (deviceId défini) prime toujours sur cette préférence.
+        const acquired = await navigator.mediaDevices.getUserMedia({
+          video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: { ideal: "environment" } },
+        });
         if (!isActive) {
           acquired.getTracks().forEach((track) => track.stop());
           return;
@@ -176,6 +188,9 @@ export default function ScanPage() {
         }
         scanningRef.current = true;
         loop();
+        // Certains navigateurs ne révèlent les labels des appareils qu'après autorisation accordée.
+        const list = await navigator.mediaDevices.enumerateDevices();
+        if (isActive) setDevices(list.filter((d) => d.kind === "videoinput"));
       } catch {
         setCameraError("Caméra indisponible");
       }
@@ -233,7 +248,7 @@ export default function ScanPage() {
       if (videoRef.current) videoRef.current.srcObject = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraOn]);
+  }, [cameraOn, deviceId]);
 
   async function handleManualSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -294,6 +309,14 @@ export default function ScanPage() {
     <div>
       <PageHeader title="Scanner un badge" />
 
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-white/5 dark:text-gray-300">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p>
+          Une photo est prise automatiquement à chaque pointage, à des fins de contrôle de
+          présence (comparaison avec la photo officielle de l&apos;employé).
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>
           <CardContent>
@@ -339,6 +362,20 @@ export default function ScanPage() {
             </div>
             <canvas ref={canvasRef} className="hidden" />
             {cameraError ? <p className="mt-3 text-sm text-error-500">{cameraError}</p> : null}
+
+            {devices.length > 1 ? (
+              <div className="mt-3">
+                <Label htmlFor="camera-device">Caméra</Label>
+                <Select id="camera-device" value={deviceId} onChange={(e) => setDeviceId(e.target.value)}>
+                  <option value="">Caméra arrière (par défaut)</option>
+                  {devices.map((d, i) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Caméra ${i + 1}`}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
 
             <form onSubmit={handleManualSubmit} className="mt-4 flex items-end gap-2">
               <div className="flex-1">

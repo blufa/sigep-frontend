@@ -137,6 +137,19 @@
     @apply overflow-x-hidden;
   }
 
+  /* `overflow-x: hidden` ne suffit pas sur iOS Safari / PWA installée : le panneau latéral mobile
+     (fixed + translate-x-full pour le cacher hors écran, voir AppSidebar) reste rendu hors
+     viewport mais participe quand même à la zone "glissable" au doigt dans WebKit — on peut donc
+     faire glisser toute la page horizontalement pour révéler le vide derrière, même sans
+     débordement réel de la largeur du document. `overscroll-behavior-x: none` empêche
+     explicitement tout glissement/rebond horizontal, qu'il vienne du panneau hors écran ou d'un
+     recalcul de graphique — persistait malgré overflow-x-hidden seul (signalé par l'utilisateur,
+     y compris en PWA installée). */
+  html,
+  body {
+    overscroll-behavior-x: none;
+  }
+
   body {
     @apply relative font-normal font-outfit z-1 bg-gray-50;
   }
