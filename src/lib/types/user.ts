@@ -15,4 +15,7 @@ export interface CreateUserInput {
   fullName: string;
   password: string;
   role: Role;
+  /** Employé à rattacher (ex. depuis la fiche employé) — son poste s'affichera à la connexion à la
+   * place du rôle administratif attribué ici. */
+  employeeId?: number;
 }

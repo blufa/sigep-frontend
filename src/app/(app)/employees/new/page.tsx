@@ -39,8 +39,9 @@ export default function NewEmployeePage() {
       }
     }
 
+    let employee;
     try {
-      await createEmployee(toEmployeeInput(values));
+      employee = await createEmployee(toEmployeeInput(values));
     } catch (error) {
       toast.error(extractErrorMessage(error, "Échec de la création de l'employé"));
       return;
@@ -53,6 +54,7 @@ export default function NewEmployeePage() {
           fullName: `${values.firstName} ${values.lastName}`.trim(),
           password: values.accountPassword!,
           role: values.accountRole,
+          employeeId: employee.id,
         });
         toast.success("Employé créé — compte de connexion prêt (identifiant : son téléphone)");
       } catch (error) {

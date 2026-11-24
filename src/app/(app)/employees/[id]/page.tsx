@@ -63,6 +63,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
           fullName: `${values.firstName} ${values.lastName}`.trim(),
           password: values.accountPassword!,
           role: values.accountRole,
+          employeeId,
         });
         toast.success("Employé mis à jour — compte de connexion prêt (identifiant : son téléphone)");
       } catch (error) {
