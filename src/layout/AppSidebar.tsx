@@ -81,7 +81,7 @@ export function resolveDefaultPathForUser(allowedMenus: string[] | null | undefi
 }
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
+  const { isExpanded, isMobileOpen, isHovered, setIsHovered, closeMobileSidebar } = useSidebar();
   const pathname = usePathname();
   const { user, isSuperAdmin, impersonatedTenantId } = useAuth();
 
@@ -106,7 +106,7 @@ const AppSidebar: React.FC = () => {
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className={`py-8 flex ${!isExpanded && !isHovered ? "lg:justify-center" : "justify-start"}`}>
-        <Link href="/" className="flex flex-col">
+        <Link href="/" onClick={closeMobileSidebar} className="flex flex-col">
           {isExpanded || isHovered || isMobileOpen ? (
             <>
               <span className="text-[11px] uppercase tracking-wide text-gray-400">MENET-FP</span>
@@ -133,6 +133,7 @@ const AppSidebar: React.FC = () => {
                   <li key={nav.name}>
                     <Link
                       href={nav.path}
+                      onClick={closeMobileSidebar}
                       className={`menu-item group ${isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"}`}
                     >
                       <span className={isActive(nav.path) ? "menu-item-icon-active" : "menu-item-icon-inactive"}>

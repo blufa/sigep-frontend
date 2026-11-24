@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import jsQR from "jsqr";
 import { toast } from "sonner";
-import { Camera, Flag, VideoOff } from "lucide-react";
+import { Camera, Flag, Info, VideoOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { SelectSearch } from "@/components/ui/select-search";
@@ -164,7 +164,16 @@ export default function ScanPage() {
 
     async function start() {
       try {
-        const acquired = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        // `exact` impose vraiment la caméra arrière (scan de badge + photo de contrôle — jamais la
+        // caméra selfie, signalé par l'utilisateur) ; simple `environment` sans `exact` n'est qu'une
+        // préférence que certains appareils ignorent. Repli sur la contrainte souple si aucune
+        // caméra arrière n'est détectée (ex. ordinateur portable de test sans caméra "environment").
+        let acquired: MediaStream;
+        try {
+          acquired = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } });
+        } catch {
+          acquired = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        }
         if (!isActive) {
           acquired.getTracks().forEach((track) => track.stop());
           return;
@@ -293,6 +302,14 @@ export default function ScanPage() {
   return (
     <div>
       <PageHeader title="Scanner un badge" />
+
+      <div className="mb-4 flex items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-white/5 dark:text-gray-300">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+        <p>
+          Une photo est prise automatiquement à chaque pointage, à des fins de contrôle de
+          présence (comparaison avec la photo officielle de l&apos;employé).
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>

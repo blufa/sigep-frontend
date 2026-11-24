@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { Search } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,12 +41,24 @@ export default function UsersPage() {
   const [resettingId, setResettingId] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [page, setPage] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [menusForUser, setMenusForUser] = useState<AppUser | null>(null);
   const [checkedMenuKeys, setCheckedMenuKeys] = useState<string[]>([]);
 
+  // Léger délai avant d'interroger l'API le temps que l'utilisateur finisse de taper, pour ne pas
+  // déclencher une requête à chaque frappe (même pattern que la liste des employés).
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["users", page],
-    queryFn: () => listUsers(page, 20),
+    queryKey: ["users", page, search],
+    queryFn: () => listUsers(page, 20, search),
     enabled: currentUser?.role === "ADMIN",
   });
 
@@ -170,6 +183,17 @@ export default function UsersPage() {
         </Card>
       ) : null}
 
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Rechercher par identifiant ou nom…"
+          className="h-11 w-full rounded-lg border border-gray-300 bg-transparent py-2.5 pr-4 pl-10 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10"
+        />
+      </div>
+
       <Card>
         <div className="overflow-x-auto">
           <Table>
@@ -246,6 +270,13 @@ export default function UsersPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {!isLoading && data?.items.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="px-5 py-4 text-sm text-gray-500">
+                    {search ? "Aucun utilisateur ne correspond à cette recherche." : "Aucun utilisateur enregistré."}
+                  </TableCell>
+                </TableRow>
+              ) : null}
             </TableBody>
           </Table>
         </div>
