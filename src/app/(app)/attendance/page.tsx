@@ -22,7 +22,8 @@ import { AttendanceEntry } from "@/lib/types/attendance";
 
 export default function AttendanceHistoryPage() {
   const [employeeId, setEmployeeId] = useState<string>("");
-  const [date, setDate] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [page, setPage] = useState(0);
   const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
@@ -36,18 +37,18 @@ export default function AttendanceHistoryPage() {
     queryFn: () => listEmployees(0, 200),
   });
 
-  const from = date ? dayjs(date).startOf("day").toISOString() : undefined;
-  const to = date ? dayjs(date).endOf("day").toISOString() : undefined;
+  const from = dateFrom ? dayjs(dateFrom).startOf("day").toISOString() : undefined;
+  const to = dateTo ? dayjs(dateTo).endOf("day").toISOString() : undefined;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["attendance-history", employeeId, date, page],
+    queryKey: ["attendance-history", employeeId, dateFrom, dateTo, page],
     queryFn: () =>
       getAttendanceHistory({
         employeeId: employeeId ? Number(employeeId) : undefined,
         from,
         to,
         page,
-        size: 20,
+        size: 10,
       }),
   });
 
@@ -56,8 +57,13 @@ export default function AttendanceHistoryPage() {
     setPage(0);
   }
 
-  function handleDateChange(value: string) {
-    setDate(value);
+  function handleDateFromChange(value: string) {
+    setDateFrom(value);
+    setPage(0);
+  }
+
+  function handleDateToChange(value: string) {
+    setDateTo(value);
     setPage(0);
   }
 
@@ -82,7 +88,7 @@ export default function AttendanceHistoryPage() {
         from,
         to,
         page: 0,
-        size: 1000,
+        size: 10000,
       });
       shouldPrintRef.current = true;
       setPrintEntries(flaggedOnly ? full.items.filter((entry) => entry.flagged) : full.items);
@@ -115,7 +121,7 @@ export default function AttendanceHistoryPage() {
       </div>
 
       <Card className="mb-6 print:hidden">
-        <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <Label htmlFor="filter-employee">Employé</Label>
             <SelectSearch
@@ -131,8 +137,24 @@ export default function AttendanceHistoryPage() {
             />
           </div>
           <div>
-            <Label htmlFor="filter-date">Date</Label>
-            <Input id="filter-date" type="date" value={date} onChange={(e) => handleDateChange(e.target.value)} />
+            <Label htmlFor="filter-date-from">Du</Label>
+            <Input
+              id="filter-date-from"
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => handleDateFromChange(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="filter-date-to">Au</Label>
+            <Input
+              id="filter-date-to"
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => handleDateToChange(e.target.value)}
+            />
           </div>
           <label className="flex items-center gap-2 self-end pb-2 text-sm text-gray-700 dark:text-gray-300">
             <input
@@ -236,7 +258,9 @@ export default function AttendanceHistoryPage() {
             <h1 className="mt-1 text-lg font-semibold text-gray-800">Historique des pointages</h1>
             <p className="mt-1 text-xs text-gray-500">
               {selectedEmployeeLabel ? `${selectedEmployeeLabel.lastName} ${selectedEmployeeLabel.firstName}` : "Tous les employés"}
-              {date ? ` — ${dayjs(date).format("DD/MM/YYYY")}` : ""}
+              {dateFrom || dateTo
+                ? ` — du ${dateFrom ? dayjs(dateFrom).format("DD/MM/YYYY") : "début"} au ${dateTo ? dayjs(dateTo).format("DD/MM/YYYY") : "aujourd'hui"}`
+                : ""}
               {flaggedOnly ? " — signalés uniquement" : ""}
               {" · Édité le "}
               {dayjs().format("DD/MM/YYYY HH:mm")}
