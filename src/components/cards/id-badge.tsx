@@ -63,10 +63,10 @@ export function IdBadge({
             <div className="flex items-center gap-2 print:gap-[0.36mm]">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Logo" className="h-10 w-10 shrink-0 object-contain print:h-[7.2mm] print:w-[7.2mm]" />
+                <img src={logoUrl} alt="Logo" className="h-13 w-13 shrink-0 object-contain print:h-[9.4mm] print:w-[9.4mm]" />
               ) : (
                 <Shield
-                  className="h-10 w-10 shrink-0 print:h-[7.2mm] print:w-[7.2mm]"
+                  className="h-13 w-13 shrink-0 print:h-[9.4mm] print:w-[9.4mm]"
                   style={{ color: MUTED }}
                   strokeWidth={1.5}
                 />
@@ -105,7 +105,7 @@ export function IdBadge({
                 explicite : "faire descendre un peu FONCTION Directeur Général". */}
             <div className="flex min-w-0 flex-col gap-4 pt-1 print:gap-[2.1mm] print:pt-[0.9mm]">
               <div>
-                <p className="text-[8px] font-medium print:text-[1.44mm]" style={{ color: MUTED }}>
+                <p className="text-[11px] font-medium print:text-[2mm]" style={{ color: MUTED }}>
                   {firstName}
                 </p>
                 <p className="break-words text-[15px] font-extrabold uppercase leading-tight print:text-[2.7mm]">
