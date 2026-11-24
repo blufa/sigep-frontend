@@ -18,6 +18,13 @@ export async function resetUserPassword(userId: number, newPassword: string): Pr
   await http.put(`/users/${userId}/password`, { newPassword });
 }
 
+/** Corrige l'identifiant d'un compte existant — ex. un numéro de téléphone enregistré avec des
+ * espaces à la création rend la connexion impossible pour l'utilisateur concerné. */
+export async function updateUsername(userId: number, username: string): Promise<AppUser> {
+  const { data } = await http.put<AppUser>(`/users/${userId}/username`, { username });
+  return data;
+}
+
 /** `menuKeys: null` lève toute restriction pour cet utilisateur. */
 export async function updateUserMenus(userId: number, menuKeys: string[] | null): Promise<AppUser> {
   const { data } = await http.put<AppUser>(`/users/${userId}/menus`, { menuKeys });

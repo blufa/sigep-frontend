@@ -18,7 +18,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { Pagination } from "@/components/ui/pagination";
 import { Modal } from "@/components/ui/modal";
 import { PageHeader } from "@/components/layout/page-header";
-import { createUser, listUsers, resetUserPassword, updateUserMenus } from "@/lib/api/users";
+import { createUser, listUsers, resetUserPassword, updateUserMenus, updateUsername } from "@/lib/api/users";
 import { extractErrorMessage } from "@/lib/api/client";
 import { useAuth } from "@/providers/auth-provider";
 import { ALL_MENU_ITEMS } from "@/layout/AppSidebar";
@@ -45,6 +45,8 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [menusForUser, setMenusForUser] = useState<AppUser | null>(null);
   const [checkedMenuKeys, setCheckedMenuKeys] = useState<string[]>([]);
+  const [editingUsernameFor, setEditingUsernameFor] = useState<AppUser | null>(null);
+  const [newUsername, setNewUsername] = useState("");
 
   // Léger délai avant d'interroger l'API le temps que l'utilisateur finisse de taper, pour ne pas
   // déclencher une requête à chaque frappe (même pattern que la liste des employés).
@@ -93,6 +95,17 @@ export default function UsersPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la réinitialisation")),
   });
 
+  const usernameMutation = useMutation({
+    mutationFn: ({ id, username }: { id: number; username: string }) => updateUsername(id, username),
+    onSuccess: () => {
+      toast.success("Identifiant mis à jour");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      setEditingUsernameFor(null);
+      setNewUsername("");
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la mise à jour de l'identifiant")),
+  });
+
   const menusMutation = useMutation({
     mutationFn: ({ id, menuKeys }: { id: number; menuKeys: string[] | null }) => updateUserMenus(id, menuKeys),
     onSuccess: () => {
@@ -103,9 +116,28 @@ export default function UsersPage() {
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la mise à jour des menus")),
   });
 
+  /** Menus assignés réellement applicables au rôle de l'utilisateur — un compte Agent ne peut de
+   * toute façon jamais voir les pages réservées aux administrateurs (Utilisateurs, Paramètres),
+   * quand bien même ces clés traîneraient encore dans ses menus enregistrés (ex. après un
+   * changement de rôle). Sans ce filtre, le décompte affiché ("Accès restreint (N menus)") compte
+   * des menus inaccessibles en pratique, ce qui ne correspond pas à l'accès réel du compte. */
+  function applicableMenuKeys(user: AppUser): string[] {
+    const allowed = user.allowedMenus;
+    if (!allowed) return ALL_MENU_ITEMS.map((item) => item.key);
+    return allowed.filter((key) => {
+      const item = ALL_MENU_ITEMS.find((i) => i.key === key);
+      return item && (!item.adminOnly || user.role === "ADMIN");
+    });
+  }
+
+  function openUsernameEditor(user: AppUser) {
+    setEditingUsernameFor(user);
+    setNewUsername(user.username);
+  }
+
   function openMenuEditor(user: AppUser) {
     setMenusForUser(user);
-    setCheckedMenuKeys(user.allowedMenus ?? ALL_MENU_ITEMS.map((item) => item.key));
+    setCheckedMenuKeys(applicableMenuKeys(user));
   }
 
   function toggleMenuKey(key: string) {
@@ -230,7 +262,7 @@ export default function UsersPage() {
                     {ROLE_LABEL[user.role] ?? user.role}
                     {user.allowedMenus ? (
                       <p className="mt-0.5 text-xs text-warning-600 dark:text-warning-400">
-                        Accès restreint ({user.allowedMenus.length} menu{user.allowedMenus.length > 1 ? "s" : ""})
+                        Accès restreint ({applicableMenuKeys(user).length} menu{applicableMenuKeys(user).length > 1 ? "s" : ""})
                       </p>
                     ) : null}
                   </TableCell>
@@ -262,6 +294,9 @@ export default function UsersPage() {
                         <Button variant="outline" size="sm" onClick={() => setResettingId(user.id)}>
                           Réinitialiser le mot de passe
                         </Button>
+                        <Button variant="outline" size="sm" onClick={() => openUsernameEditor(user)}>
+                          Modifier l&apos;identifiant
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => openMenuEditor(user)}>
                           Gérer les menus
                         </Button>
@@ -285,15 +320,34 @@ export default function UsersPage() {
         ) : null}
       </Card>
 
+      <Modal isOpen={!!editingUsernameFor} onClose={() => setEditingUsernameFor(null)} className="max-w-sm p-6">
+        <h2 className="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">
+          Identifiant de {editingUsernameFor?.fullName}
+        </h2>
+        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Utile par exemple si le numéro de téléphone a été enregistré avec des espaces, empêchant
+          la connexion.
+        </p>
+        <Label htmlFor="new-username">Identifiant</Label>
+        <Input id="new-username" value={newUsername} onChange={(e) => setNewUsername(e.target.value)} />
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setEditingUsernameFor(null)}>
+            Annuler
+          </Button>
+          <Button
+            type="button"
+            onClick={() => editingUsernameFor && usernameMutation.mutate({ id: editingUsernameFor.id, username: newUsername })}
+            disabled={!newUsername.trim() || usernameMutation.isPending}
+          >
+            Enregistrer
+          </Button>
+        </div>
+      </Modal>
+
       <Modal isOpen={!!menusForUser} onClose={() => setMenusForUser(null)} className="max-w-md p-6">
         <h2 className="mb-1 text-base font-semibold text-gray-800 dark:text-white/90">
           Menus de {menusForUser?.fullName}
         </h2>
-        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-          Cochez les pages auxquelles ce compte a accès (au moins une). Tout cocher revient à ne
-          poser aucune restriction — utile par exemple pour un compte vigile limité à &laquo;
-          Scanner un badge &raquo;.
-        </p>
         <div className="mb-6 space-y-2">
           {ALL_MENU_ITEMS.filter((item) => !item.adminOnly || menusForUser?.role === "ADMIN").map((item) => (
             <label key={item.key} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-white/5">

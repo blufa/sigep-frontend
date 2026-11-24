@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: response.fullName,
       role: response.role,
       allowedMenus: response.allowedMenus,
+      positionTitle: response.positionTitle,
     };
     setRawUser(loggedInUser);
     return loggedInUser;
@@ -73,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const user = useMemo<AuthUser | null>(() => {
     if (!rawUser) return null;
     if (isSuperAdmin && impersonatedTenantId != null) {
-      return { ...rawUser, tenantId: impersonatedTenantId, role: "ADMIN", allowedMenus: null };
+      return { ...rawUser, tenantId: impersonatedTenantId, role: "ADMIN", allowedMenus: null, positionTitle: null };
     }
     return rawUser;
   }, [rawUser, isSuperAdmin, impersonatedTenantId]);
