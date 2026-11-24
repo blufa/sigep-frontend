@@ -55,13 +55,11 @@ export function EmployeeForm({
   defaultValues,
   onSubmit,
   submitLabel = "Enregistrer",
-  disableMatricule = false,
   showAccountCreation = false,
 }: {
   defaultValues: EmployeeInput & { createAccount?: boolean; accountRole?: "ADMIN" | "AGENT"; accountPassword?: string };
   onSubmit: (values: EmployeeFormValues) => void;
   submitLabel?: string;
-  disableMatricule?: boolean;
   /** Affiche la section "Créer un compte de connexion" — réservé à la création d'un nouvel employé. */
   showAccountCreation?: boolean;
 }) {
@@ -93,7 +91,7 @@ export function EmployeeForm({
     <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
         <Label htmlFor="matricule">Matricule d&apos;Etat</Label>
-        <Input id="matricule" disabled={disableMatricule} {...register("matricule")} />
+        <Input id="matricule" {...register("matricule")} />
         {errors.matricule ? <p className="mt-1 text-xs text-error-500">{errors.matricule.message}</p> : null}
       </div>
 

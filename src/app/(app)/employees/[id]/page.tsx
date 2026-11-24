@@ -112,7 +112,6 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
               }}
               onSubmit={handleSubmit}
               submitLabel="Enregistrer les modifications"
-              disableMatricule
               showAccountCreation
             />
           )}

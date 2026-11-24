@@ -46,6 +46,20 @@ export async function getMonthlyAttendanceReportPdfBlobUrl(year: number, month: 
   return URL.createObjectURL(data);
 }
 
+/** Même rapport que getMonthlyAttendanceReportPdfBlobUrl, limité à un seul employé — accessible
+ * depuis la liste des pointages filtrée sur cet employé. */
+export async function getEmployeeMonthlyAttendanceReportPdfBlobUrl(
+  employeeId: number,
+  year: number,
+  month: number,
+): Promise<string> {
+  const { data } = await http.get<Blob>(`/attendance/report/monthly/employee/${employeeId}`, {
+    params: { year, month },
+    responseType: "blob",
+  });
+  return URL.createObjectURL(data);
+}
+
 export async function getAttendanceHistory(params: {
   employeeId?: number;
   from?: string;

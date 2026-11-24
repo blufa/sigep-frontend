@@ -4,18 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
 import { toast } from "sonner";
-import { Camera, Flag, Printer } from "lucide-react";
+import { Camera, FileText, Flag, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SelectSearch } from "@/components/ui/select-search";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/ui/modal";
+import { PdfPreviewModal } from "@/components/ui/pdf-preview-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/layout/page-header";
-import { getAttendanceHistory, getAttendancePunchPhotoUrl } from "@/lib/api/attendance";
+import {
+  getAttendanceHistory,
+  getAttendancePunchPhotoUrl,
+  getEmployeeMonthlyAttendanceReportPdfBlobUrl,
+} from "@/lib/api/attendance";
 import { listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
 import { AttendanceEntry } from "@/lib/types/attendance";
@@ -31,6 +36,9 @@ export default function AttendanceHistoryPage() {
   const [printEntries, setPrintEntries] = useState<AttendanceEntry[] | null>(null);
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const shouldPrintRef = useRef(false);
+  const [reportMonth, setReportMonth] = useState(dayjs().format("YYYY-MM"));
+  const [employeeReportPdfUrl, setEmployeeReportPdfUrl] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const { data: employees } = useQuery({
     queryKey: ["employees"],
@@ -96,6 +104,20 @@ export default function AttendanceHistoryPage() {
       toast.error(extractErrorMessage(error, "Échec de la préparation de l'impression"));
     } finally {
       setIsPreparingPrint(false);
+    }
+  }
+
+  async function handleGenerateEmployeeReport() {
+    if (!employeeId) return;
+    const [year, month] = reportMonth.split("-").map(Number);
+    setIsGeneratingReport(true);
+    try {
+      const url = await getEmployeeMonthlyAttendanceReportPdfBlobUrl(Number(employeeId), year, month);
+      setEmployeeReportPdfUrl(url);
+    } catch (error) {
+      toast.error(extractErrorMessage(error, "Échec de la génération du rapport"));
+    } finally {
+      setIsGeneratingReport(false);
     }
   }
 
@@ -166,6 +188,23 @@ export default function AttendanceHistoryPage() {
             Pointages signalés uniquement
           </label>
         </div>
+        {employeeId ? (
+          <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 p-4 dark:border-gray-800">
+            <div>
+              <Label htmlFor="report-month">Rapport de présence — mois</Label>
+              <Input
+                id="report-month"
+                type="month"
+                value={reportMonth}
+                onChange={(e) => setReportMonth(e.target.value)}
+                className="w-44"
+              />
+            </div>
+            <Button variant="outline" onClick={handleGenerateEmployeeReport} disabled={isGeneratingReport}>
+              <FileText className="h-4 w-4" /> {isGeneratingReport ? "Génération…" : "Générer le rapport de l'employé"}
+            </Button>
+          </div>
+        ) : null}
       </Card>
 
       <Card className="print:hidden">
@@ -317,6 +356,23 @@ export default function AttendanceHistoryPage() {
           <img src={viewingPhotoUrl} alt={`Pointage de ${viewingPhotoName}`} className="w-full rounded-lg" />
         ) : null}
       </Modal>
+
+      <PdfPreviewModal
+        isOpen={employeeReportPdfUrl !== null}
+        onClose={() => {
+          if (employeeReportPdfUrl) URL.revokeObjectURL(employeeReportPdfUrl);
+          setEmployeeReportPdfUrl(null);
+        }}
+        pdfUrl={employeeReportPdfUrl}
+        title={`Rapport de présence — ${selectedEmployeeLabel ? `${selectedEmployeeLabel.lastName} ${selectedEmployeeLabel.firstName}` : ""}`}
+        onDownload={() => {
+          if (!employeeReportPdfUrl) return;
+          const link = document.createElement("a");
+          link.href = employeeReportPdfUrl;
+          link.download = "rapport-presence-employe.pdf";
+          link.click();
+        }}
+      />
     </div>
   );
 }
