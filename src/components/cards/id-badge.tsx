@@ -72,17 +72,17 @@ export function IdBadge({
                 />
               )}
               <div className="text-left">
-                <p className="text-[8px] font-extrabold tracking-wider print:text-[1.44mm]">RÉPUBLIQUE DE GUINÉE</p>
-                <p className="text-[6px] font-medium print:text-[1.08mm]" style={{ color: MUTED }}>
+                <p className="text-[10px] font-extrabold tracking-wider print:text-[1.8mm]">RÉPUBLIQUE DE GUINÉE</p>
+                <p className="text-[7.5px] font-medium print:text-[1.35mm]" style={{ color: MUTED }}>
                   Travail – Justice – Solidarité
                 </p>
               </div>
             </div>
-            <p className="text-[6.5px] font-bold uppercase leading-tight print:text-[1.17mm]">
+            <p className="text-[8px] font-bold uppercase leading-tight print:text-[1.44mm]">
               {card.ministryName ?? DEFAULT_MINISTRY_NAME}
             </p>
             <p
-              className="w-full border-t pt-1.5 text-[6px] font-semibold uppercase leading-tight print:pt-[0.27mm] print:text-[1.08mm]"
+              className="w-full border-t pt-1.5 text-[7.5px] font-semibold uppercase leading-tight print:pt-[0.27mm] print:text-[1.35mm]"
               style={{ color: ACCENT, borderColor: "#DDE2E6" }}
             >
               {card.serviceName ?? DEFAULT_SERVICE_NAME}
@@ -113,10 +113,10 @@ export function IdBadge({
                 </p>
               </div>
               <div>
-                <p className="text-[6px] font-bold uppercase tracking-wider print:text-[1.08mm]" style={{ color: MUTED }}>
+                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
                   Fonction
                 </p>
-                <p className="text-[8px] font-semibold leading-tight print:text-[1.44mm]">{card.positionTitle ?? "—"}</p>
+                <p className="text-[10px] font-semibold leading-tight print:text-[1.8mm]">{card.positionTitle ?? "—"}</p>
               </div>
             </div>
           </div>
@@ -129,20 +129,20 @@ export function IdBadge({
               <QRCodeSVG value={card.qrToken} size={94} level="M" marginSize={0} className="h-full w-full" />
             </div>
             <div className="flex min-w-0 flex-col gap-1.5 print:gap-[0.27mm]">
-              <p className="text-[7.5px] font-bold leading-tight print:text-[1.35mm]">
+              <p className="text-[9px] font-bold leading-tight print:text-[1.62mm]">
                 Scanner à l&apos;arrivée et au départ
               </p>
               <div>
-                <p className="text-[6px] font-bold uppercase tracking-wider print:text-[1.08mm]" style={{ color: MUTED }}>
+                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
                   Matricule
                 </p>
-                <p className="font-mono text-[9px] font-bold leading-tight print:text-[1.6mm]">{card.matricule}</p>
+                <p className="font-mono text-[11px] font-bold leading-tight print:text-[1.98mm]">{card.matricule}</p>
               </div>
               <div>
-                <p className="text-[6px] font-bold uppercase tracking-wider print:text-[1.08mm]" style={{ color: MUTED }}>
+                <p className="text-[7.5px] font-bold uppercase tracking-wider print:text-[1.35mm]" style={{ color: MUTED }}>
                   Hiérarchie
                 </p>
-                <p className="text-[7.5px] font-semibold leading-tight print:text-[1.35mm]">{card.hierarchie ?? "—"}</p>
+                <p className="text-[9px] font-semibold leading-tight print:text-[1.62mm]">{card.hierarchie ?? "—"}</p>
               </div>
             </div>
           </div>
@@ -159,8 +159,8 @@ export function IdBadge({
             className="flex h-[34px] shrink-0 items-center justify-between px-5 text-white print:h-[6.1mm] print:px-[3.6mm]"
             style={{ background: ACCENT }}
           >
-            <p className="text-[10px] font-extrabold tracking-[0.2em] print:text-[1.8mm]">BADGE AGENT</p>
-            {card.city ? <p className="text-[6px] font-semibold opacity-85 print:text-[1.08mm]">{card.city}</p> : null}
+            <p className="text-[12px] font-extrabold tracking-[0.2em] print:text-[2.16mm]">BADGE AGENT</p>
+            {card.city ? <p className="text-[7.5px] font-semibold opacity-85 print:text-[1.35mm]">{card.city}</p> : null}
           </div>
         </div>
       </div>
