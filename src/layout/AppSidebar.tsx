@@ -9,6 +9,7 @@ import {
   CalenderIcon,
   DocsIcon,
   GridIcon,
+  GroupIcon,
   HorizontaLDots,
   ListIcon,
   PlugInIcon,
@@ -25,6 +26,7 @@ export type MenuKey =
   | "attendance"
   | "scan"
   | "missions"
+  | "meetings"
   | "users"
   | "settings";
 
@@ -44,6 +46,7 @@ const navItems: NavItem[] = [
   { key: "attendance", icon: <TableIcon />, name: "Pointage", path: "/attendance" },
   { key: "scan", icon: <TimeIcon />, name: "Scanner un badge", path: "/attendance/scan" },
   { key: "missions", icon: <CalenderIcon />, name: "Missions", path: "/missions", adminOnly: true },
+  { key: "meetings", icon: <GroupIcon />, name: "Réunions", path: "/meetings", adminOnly: true },
   { key: "users", icon: <PlugInIcon />, name: "Utilisateurs", path: "/users", adminOnly: true },
   { key: "settings", icon: <DocsIcon />, name: "Paramètres", path: "/settings", adminOnly: true },
 ];
