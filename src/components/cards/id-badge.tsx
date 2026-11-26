@@ -63,7 +63,7 @@ export function IdBadge({
             <div className="flex items-center gap-2 print:gap-[0.36mm]">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Logo" className="h-13 w-13 shrink-0 object-contain print:h-[9.4mm] print:w-[9.4mm]" />
+                <img src={logoUrl} alt="Logo" className="h-[83px] w-[83px] shrink-0 object-contain print:h-[15mm] print:w-[15mm]" />
               ) : (
                 <Shield
                   className="h-13 w-13 shrink-0 print:h-[9.4mm] print:w-[9.4mm]"
@@ -72,7 +72,7 @@ export function IdBadge({
                 />
               )}
               <div className="text-left">
-                <p className="text-[13px] font-extrabold tracking-wider print:text-[2.34mm]">RÉPUBLIQUE DE GUINÉE</p>
+                <p className="whitespace-nowrap text-[10px] font-extrabold tracking-wider print:text-[1.8mm]">RÉPUBLIQUE DE GUINÉE</p>
                 <p className="text-[10px] font-medium print:text-[1.8mm]" style={{ color: MUTED }}>
                   Travail – Justice – Solidarité
                 </p>
@@ -115,9 +115,6 @@ export function IdBadge({
                 </p>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
-                  Fonction
-                </p>
                 <p className="text-[13px] font-semibold leading-tight print:text-[2.34mm]">{card.positionTitle ?? "—"}</p>
               </div>
             </div>
@@ -131,9 +128,6 @@ export function IdBadge({
               <QRCodeSVG value={card.qrToken} size={94} level="M" marginSize={0} className="h-full w-full" />
             </div>
             <div className="flex min-w-0 flex-col gap-1.5 print:gap-[0.27mm]">
-              <p className="text-[12px] font-bold leading-tight print:text-[2.16mm]">
-                Scanner à l&apos;arrivée et au départ
-              </p>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
                   Matricule
@@ -161,8 +155,7 @@ export function IdBadge({
             className="flex h-[34px] shrink-0 items-center justify-between px-5 text-white print:h-[6.1mm] print:px-[3.6mm]"
             style={{ background: ACCENT }}
           >
-            <p className="text-[15px] font-extrabold tracking-[0.2em] print:text-[2.79mm]">BADGE AGENT</p>
-            {card.city ? <p className="text-[10px] font-semibold opacity-85 print:text-[1.8mm]">{card.city}</p> : null}
+            <p className="text-[15px] font-extrabold tracking-[0.2em] print:text-[2.79mm]">CARTE DE SERVICE</p>
           </div>
         </div>
       </div>
