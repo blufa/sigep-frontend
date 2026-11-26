@@ -78,7 +78,7 @@ export function IdBadge({
                 </p>
               </div>
             </div>
-            <p className="text-[10.5px] font-bold uppercase leading-tight print:text-[1.89mm]">
+            <p className="text-[10px] font-bold uppercase leading-tight print:text-[1.8mm]">
               {card.ministryName ?? DEFAULT_MINISTRY_NAME}
             </p>
             <p
