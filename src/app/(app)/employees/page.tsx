@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Printer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { EmployeeDetailModal } from "@/components/employees/employee-detail-moda
 import { Pagination } from "@/components/ui/pagination";
 import { IdBadge } from "@/components/cards/id-badge";
 import { BadgeSheet } from "@/components/cards/badge-sheet";
-import { downloadEmployeeReportPdf, getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
+import { deleteEmployee, downloadEmployeeReportPdf, getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
 import { getSheetCardViews } from "@/lib/api/badges";
 import { listPositions } from "@/lib/api/positions";
 import { getOrganization } from "@/lib/api/organization";
@@ -27,6 +27,7 @@ import { BadgeCardView } from "@/lib/types/badge";
 const GENRE_LABEL: Record<string, string> = { HOMME: "Homme", FEMME: "Femme" };
 
 export default function EmployeesPage() {
+  const queryClient = useQueryClient();
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -76,6 +77,21 @@ export default function EmployeesPage() {
     setCheckedIds((current) =>
       allOnPageChecked ? current.filter((id) => !pageIds.includes(id)) : [...new Set([...current, ...pageIds])],
     );
+  }
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: () => {
+      toast.success("Employé supprimé");
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+    },
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la suppression")),
+  });
+
+  function handleDelete(employee: Employee) {
+    if (window.confirm(`Supprimer définitivement ${employee.lastName} ${employee.firstName} ?`)) {
+      deleteMutation.mutate(employee.id);
+    }
   }
 
   async function handleDownloadReport() {
@@ -226,6 +242,15 @@ export default function EmployeesPage() {
                       </Link>
                       <Button variant="secondary" size="sm" onClick={() => showBadges([employee.id])}>
                         Badge
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-error-600 hover:bg-error-50"
+                        onClick={() => handleDelete(employee)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Supprimer
                       </Button>
                     </div>
                   </TableCell>

@@ -24,6 +24,7 @@ const schema = z.object({
   scheduledAt: z.string().min(1, "La date/heure est requise"),
   location: z.string().optional(),
   attendeeEmployeeIds: z.array(z.string()).min(1, "Au moins un invité est requis"),
+  notifyAt: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -52,16 +53,22 @@ export default function MeetingsPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [] },
+    defaultValues: { title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [], notifyAt: "" },
   });
 
   const selectedAttendeeIds = watch("attendeeEmployeeIds");
+  const allEmployeeIds = (employees?.items ?? []).map((e) => String(e.id));
+  const allSelected = allEmployeeIds.length > 0 && allEmployeeIds.every((id) => selectedAttendeeIds.includes(id));
 
   function toggleAttendee(employeeId: string, checked: boolean) {
     const next = checked
       ? [...selectedAttendeeIds, employeeId]
       : selectedAttendeeIds.filter((id) => id !== employeeId);
     setValue("attendeeEmployeeIds", next, { shouldValidate: true });
+  }
+
+  function toggleAll(checked: boolean) {
+    setValue("attendeeEmployeeIds", checked ? allEmployeeIds : [], { shouldValidate: true });
   }
 
   const createMutation = useMutation({
@@ -72,12 +79,17 @@ export default function MeetingsPage() {
         scheduledAt: new Date(values.scheduledAt).toISOString(),
         location: values.location || undefined,
         attendeeEmployeeIds: values.attendeeEmployeeIds.map(Number),
+        notifyAt: values.notifyAt ? new Date(values.notifyAt).toISOString() : undefined,
       }),
-    onSuccess: () => {
-      toast.success("Réunion programmée — les invités ont été notifiés par SMS");
+    onSuccess: (_, values) => {
+      toast.success(
+        values.notifyAt
+          ? "Réunion programmée — le SMS de convocation sera envoyé à l'heure choisie"
+          : "Réunion programmée — les invités ont été notifiés par SMS",
+      );
       queryClient.invalidateQueries({ queryKey: ["meetings"] });
       setShowForm(false);
-      reset({ title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [] });
+      reset({ title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [], notifyAt: "" });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de la programmation de la réunion")),
   });
@@ -128,7 +140,25 @@ export default function MeetingsPage() {
                 <Input id="meeting-description" {...register("description")} />
               </div>
               <div className="sm:col-span-2">
-                <Label>Invités</Label>
+                <Label htmlFor="meeting-notify-at">Programmer l&apos;envoi du SMS (optionnel)</Label>
+                <Input id="meeting-notify-at" type="datetime-local" {...register("notifyAt")} />
+                <p className="mt-1 text-xs text-gray-400">
+                  Laisser vide pour envoyer la convocation immédiatement à l&apos;enregistrement.
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <div className="mb-2 flex items-center justify-between">
+                  <Label className="mb-0">Invités</Label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={allSelected}
+                      onChange={(e) => toggleAll(e.target.checked)}
+                    />
+                    Tout sélectionner
+                  </label>
+                </div>
                 <div className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 p-3 sm:grid-cols-3 dark:border-gray-800">
                   {(employees?.items ?? []).map((employee) => (
                     <label key={employee.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
@@ -164,7 +194,7 @@ export default function MeetingsPage() {
           <Table>
             <TableHeader className="border-b border-gray-100 dark:border-gray-800">
               <TableRow>
-                {["Titre", "Date et heure", "Lieu", "Invités", ""].map((label) => (
+                {["Titre", "Date et heure", "Lieu", "Invités", "SMS", ""].map((label) => (
                   <TableCell
                     key={label}
                     isHeader
@@ -178,7 +208,7 @@ export default function MeetingsPage() {
             <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="px-5 py-4 text-sm text-gray-500">
+                  <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
                     Chargement…
                   </TableCell>
                 </TableRow>
@@ -195,6 +225,13 @@ export default function MeetingsPage() {
                   <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {meeting.attendees.map((a) => a.fullName).join(", ") || "—"}
                   </TableCell>
+                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {meeting.notified
+                      ? "Envoyé"
+                      : meeting.notifyAt
+                        ? `Programmé — ${dayjs(meeting.notifyAt).format("DD/MM/YYYY HH:mm")}`
+                        : "—"}
+                  </TableCell>
                   <TableCell className="px-5 py-4">
                     <Button variant="outline" size="sm" onClick={() => cancelMutation.mutate(meeting.id)}>
                       Annuler
@@ -204,7 +241,7 @@ export default function MeetingsPage() {
               ))}
               {!isLoading && data?.items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="px-5 py-4 text-sm text-gray-500">
+                  <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
                     Aucune réunion programmée.
                   </TableCell>
                 </TableRow>

@@ -18,3 +18,9 @@ export interface MissionInput {
   endDate: string;
   reason?: string;
 }
+
+export interface MissionUpdateInput {
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}

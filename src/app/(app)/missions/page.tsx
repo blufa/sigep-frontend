@@ -15,9 +15,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/layout/page-header";
-import { cancelMission, createMission, listMissions } from "@/lib/api/missions";
+import { cancelMission, createMission, listMissions, updateMission } from "@/lib/api/missions";
 import { listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
+import { Mission } from "@/lib/types/mission";
 
 const schema = z.object({
   employeeId: z.string().min(1, "L'employé est requis"),
@@ -31,6 +32,7 @@ type FormValues = z.infer<typeof schema>;
 export default function MissionsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Mission | null>(null);
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useQuery({
@@ -54,18 +56,40 @@ export default function MissionsPage() {
     defaultValues: { employeeId: "", startDate: "", endDate: "", reason: "" },
   });
 
-  const createMutation = useMutation({
+  function openCreate() {
+    setEditing(null);
+    reset({ employeeId: "", startDate: "", endDate: "", reason: "" });
+    setShowForm(true);
+  }
+
+  function openEdit(mission: Mission) {
+    setEditing(mission);
+    reset({
+      employeeId: String(mission.employeeId),
+      startDate: mission.startDate,
+      endDate: mission.endDate,
+      reason: mission.reason ?? "",
+    });
+    setShowForm(true);
+  }
+
+  const saveMutation = useMutation({
     mutationFn: (values: FormValues) =>
-      createMission({
-        employeeId: Number(values.employeeId),
-        startDate: values.startDate,
-        endDate: values.endDate,
-        reason: values.reason || undefined,
-      }),
+      editing
+        ? updateMission(editing.id, { startDate: values.startDate, endDate: values.endDate, reason: values.reason || undefined })
+        : createMission({
+            employeeId: Number(values.employeeId),
+            startDate: values.startDate,
+            endDate: values.endDate,
+            reason: values.reason || undefined,
+          }),
     onSuccess: () => {
-      toast.success("Mission enregistrée — l'employé ne sera pas compté absent sur cette période");
+      toast.success(
+        editing ? "Mission mise à jour" : "Mission enregistrée — l'employé ne sera pas compté absent sur cette période",
+      );
       queryClient.invalidateQueries({ queryKey: ["missions"] });
       setShowForm(false);
+      setEditing(null);
       reset({ employeeId: "", startDate: "", endDate: "", reason: "" });
     },
     onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement de la mission")),
@@ -85,37 +109,56 @@ export default function MissionsPage() {
       <PageHeader
         title="Missions"
         description="Un employé en mission officielle n'est pas compté absent pendant cette période."
-        actions={<Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Fermer" : "Nouvelle mission"}</Button>}
+        actions={
+          <Button
+            onClick={() => {
+              if (showForm) {
+                setShowForm(false);
+              } else {
+                openCreate();
+              }
+            }}
+          >
+            {showForm ? "Fermer" : "Nouvelle mission"}
+          </Button>
+        }
       />
 
       {showForm ? (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Nouvelle mission</CardTitle>
+            <CardTitle>{editing ? "Modifier la mission" : "Nouvelle mission"}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={handleSubmit((values) => createMutation.mutate(values))}
+              onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
               className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:items-end"
             >
               <div className="lg:col-span-2">
                 <Label htmlFor="mission-employee">Employé</Label>
-                <Controller
-                  control={control}
-                  name="employeeId"
-                  render={({ field }) => (
-                    <SelectSearch
-                      id="mission-employee"
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Rechercher un employé…"
-                      options={(employees?.items ?? []).map((employee) => ({
-                        value: String(employee.id),
-                        label: `${employee.lastName} ${employee.firstName}`,
-                      }))}
-                    />
-                  )}
-                />
+                {editing ? (
+                  <p className="flex h-11 items-center text-sm text-gray-700 dark:text-gray-300">
+                    {editing.employeeFullName ?? "—"}{" "}
+                    <span className="ml-2 text-xs text-gray-400">(non modifiable — annulez et recréez si besoin)</span>
+                  </p>
+                ) : (
+                  <Controller
+                    control={control}
+                    name="employeeId"
+                    render={({ field }) => (
+                      <SelectSearch
+                        id="mission-employee"
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Rechercher un employé…"
+                        options={(employees?.items ?? []).map((employee) => ({
+                          value: String(employee.id),
+                          label: `${employee.lastName} ${employee.firstName}`,
+                        }))}
+                      />
+                    )}
+                  />
+                )}
                 {errors.employeeId ? <p className="mt-1 text-xs text-error-500">{errors.employeeId.message}</p> : null}
               </div>
               <div>
@@ -187,9 +230,14 @@ export default function MissionsPage() {
                     {mission.reason ?? "—"}
                   </TableCell>
                   <TableCell className="px-5 py-4">
-                    <Button variant="outline" size="sm" onClick={() => cancelMutation.mutate(mission.id)}>
-                      Annuler
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(mission)}>
+                        Modifier
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => cancelMutation.mutate(mission.id)}>
+                        Annuler
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

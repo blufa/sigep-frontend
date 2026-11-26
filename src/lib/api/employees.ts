@@ -24,6 +24,10 @@ export async function updateEmployee(id: number, input: EmployeeInput): Promise<
   return data;
 }
 
+export async function deleteEmployee(id: number): Promise<void> {
+  await http.delete(`/employees/${id}`);
+}
+
 export async function uploadEmployeePhoto(id: number, file: File): Promise<void> {
   const formData = new FormData();
   formData.append("file", file);
