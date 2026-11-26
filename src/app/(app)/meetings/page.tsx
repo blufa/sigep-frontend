@@ -14,9 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { PageHeader } from "@/components/layout/page-header";
-import { cancelMeeting, createMeeting, listMeetings } from "@/lib/api/meetings";
+import { cancelMeeting, createMeeting, listMeetings, updateMeeting } from "@/lib/api/meetings";
 import { listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
+import { Meeting } from "@/lib/types/meeting";
 
 const schema = z.object({
   title: z.string().min(1, "Le titre est requis"),
@@ -32,6 +33,7 @@ type FormValues = z.infer<typeof schema>;
 export default function MeetingsPage() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState<Meeting | null>(null);
   const [page, setPage] = useState(0);
 
   const { data, isLoading } = useQuery({
@@ -71,27 +73,57 @@ export default function MeetingsPage() {
     setValue("attendeeEmployeeIds", checked ? allEmployeeIds : [], { shouldValidate: true });
   }
 
-  const createMutation = useMutation({
+  function openCreate() {
+    setEditing(null);
+    reset({ title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [], notifyAt: "" });
+    setShowForm(true);
+  }
+
+  function openEdit(meeting: Meeting) {
+    setEditing(meeting);
+    reset({
+      title: meeting.title,
+      description: meeting.description ?? "",
+      scheduledAt: dayjs(meeting.scheduledAt).format("YYYY-MM-DDTHH:mm"),
+      location: meeting.location ?? "",
+      attendeeEmployeeIds: meeting.attendees.map((a) => String(a.employeeId)),
+      notifyAt: "",
+    });
+    setShowForm(true);
+  }
+
+  const saveMutation = useMutation({
     mutationFn: (values: FormValues) =>
-      createMeeting({
-        title: values.title,
-        description: values.description || undefined,
-        scheduledAt: new Date(values.scheduledAt).toISOString(),
-        location: values.location || undefined,
-        attendeeEmployeeIds: values.attendeeEmployeeIds.map(Number),
-        notifyAt: values.notifyAt ? new Date(values.notifyAt).toISOString() : undefined,
-      }),
+      editing
+        ? updateMeeting(editing.id, {
+            title: values.title,
+            description: values.description || undefined,
+            scheduledAt: new Date(values.scheduledAt).toISOString(),
+            location: values.location || undefined,
+            attendeeEmployeeIds: values.attendeeEmployeeIds.map(Number),
+          })
+        : createMeeting({
+            title: values.title,
+            description: values.description || undefined,
+            scheduledAt: new Date(values.scheduledAt).toISOString(),
+            location: values.location || undefined,
+            attendeeEmployeeIds: values.attendeeEmployeeIds.map(Number),
+            notifyAt: values.notifyAt ? new Date(values.notifyAt).toISOString() : undefined,
+          }),
     onSuccess: (_, values) => {
       toast.success(
-        values.notifyAt
-          ? "Réunion programmée — le SMS de convocation sera envoyé à l'heure choisie"
-          : "Réunion programmée — les invités ont été notifiés par SMS",
+        editing
+          ? "Réunion mise à jour"
+          : values.notifyAt
+            ? "Réunion programmée — le SMS de convocation sera envoyé à l'heure choisie"
+            : "Réunion programmée — les invités ont été notifiés par SMS",
       );
       queryClient.invalidateQueries({ queryKey: ["meetings"] });
       setShowForm(false);
+      setEditing(null);
       reset({ title: "", description: "", scheduledAt: "", location: "", attendeeEmployeeIds: [], notifyAt: "" });
     },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la programmation de la réunion")),
+    onError: (error) => toast.error(extractErrorMessage(error, "Échec de l'enregistrement de la réunion")),
   });
 
   const cancelMutation = useMutation({
@@ -108,17 +140,29 @@ export default function MeetingsPage() {
       <PageHeader
         title="Réunions"
         description="Programmer une réunion envoie automatiquement un SMS de convocation à chaque invité."
-        actions={<Button onClick={() => setShowForm((v) => !v)}>{showForm ? "Fermer" : "Nouvelle réunion"}</Button>}
+        actions={
+          <Button
+            onClick={() => {
+              if (showForm) {
+                setShowForm(false);
+              } else {
+                openCreate();
+              }
+            }}
+          >
+            {showForm ? "Fermer" : "Nouvelle réunion"}
+          </Button>
+        }
       />
 
       {showForm ? (
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Nouvelle réunion</CardTitle>
+            <CardTitle>{editing ? "Modifier la réunion" : "Nouvelle réunion"}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
-              onSubmit={handleSubmit((values) => createMutation.mutate(values))}
+              onSubmit={handleSubmit((values) => saveMutation.mutate(values))}
               className="grid grid-cols-1 gap-4 sm:grid-cols-2"
             >
               <div>
@@ -139,13 +183,15 @@ export default function MeetingsPage() {
                 <Label htmlFor="meeting-description">Description (optionnel)</Label>
                 <Input id="meeting-description" {...register("description")} />
               </div>
-              <div className="sm:col-span-2">
-                <Label htmlFor="meeting-notify-at">Programmer l&apos;envoi du SMS (optionnel)</Label>
-                <Input id="meeting-notify-at" type="datetime-local" {...register("notifyAt")} />
-                <p className="mt-1 text-xs text-gray-400">
-                  Laisser vide pour envoyer la convocation immédiatement à l&apos;enregistrement.
-                </p>
-              </div>
+              {!editing ? (
+                <div className="sm:col-span-2">
+                  <Label htmlFor="meeting-notify-at">Programmer l&apos;envoi du SMS (optionnel)</Label>
+                  <Input id="meeting-notify-at" type="datetime-local" {...register("notifyAt")} />
+                  <p className="mt-1 text-xs text-gray-400">
+                    Laisser vide pour envoyer la convocation immédiatement à l&apos;enregistrement.
+                  </p>
+                </div>
+              ) : null}
               <div className="sm:col-span-2">
                 <div className="mb-2 flex items-center justify-between">
                   <Label className="mb-0">Invités</Label>
@@ -178,7 +224,7 @@ export default function MeetingsPage() {
               </div>
               <div className="flex gap-2 sm:col-span-2">
                 <Button type="submit" disabled={isSubmitting}>
-                  Programmer et envoyer les SMS
+                  {editing ? "Enregistrer" : "Programmer et envoyer les SMS"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                   Annuler
@@ -233,9 +279,14 @@ export default function MeetingsPage() {
                         : "—"}
                   </TableCell>
                   <TableCell className="px-5 py-4">
-                    <Button variant="outline" size="sm" onClick={() => cancelMutation.mutate(meeting.id)}>
-                      Annuler
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openEdit(meeting)}>
+                        Modifier
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => cancelMutation.mutate(meeting.id)}>
+                        Annuler
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

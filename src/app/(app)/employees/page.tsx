@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmployeeDetailModal } from "@/components/employees/employee-detail-modal";
 import { Pagination } from "@/components/ui/pagination";
@@ -36,6 +37,7 @@ export default function EmployeesPage() {
   const [badgeCards, setBadgeCards] = useState<BadgeCardView[] | null>(null);
   const [badgePhotoUrls, setBadgePhotoUrls] = useState<(string | null)[]>([]);
   const [isLoadingBadges, setIsLoadingBadges] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   // Léger délai avant d'interroger l'API le temps que l'utilisateur finisse de taper, pour ne pas
   // déclencher une requête à chaque frappe.
@@ -84,15 +86,13 @@ export default function EmployeesPage() {
     onSuccess: () => {
       toast.success("Employé supprimé");
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setEmployeeToDelete(null);
     },
-    onError: (error) => toast.error(extractErrorMessage(error, "Échec de la suppression")),
+    onError: (error) => {
+      toast.error(extractErrorMessage(error, "Échec de la suppression"));
+      setEmployeeToDelete(null);
+    },
   });
-
-  function handleDelete(employee: Employee) {
-    if (window.confirm(`Supprimer définitivement ${employee.lastName} ${employee.firstName} ?`)) {
-      deleteMutation.mutate(employee.id);
-    }
-  }
 
   async function handleDownloadReport() {
     try {
@@ -247,7 +247,7 @@ export default function EmployeesPage() {
                         variant="outline"
                         size="sm"
                         className="text-error-600 hover:bg-error-50"
-                        onClick={() => handleDelete(employee)}
+                        onClick={() => setEmployeeToDelete(employee)}
                         disabled={deleteMutation.isPending}
                       >
                         Supprimer
@@ -288,6 +288,21 @@ export default function EmployeesPage() {
           <BadgeSheet cards={badgeCards} logoUrl={logoUrl} photoUrls={badgePhotoUrls} />
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={employeeToDelete !== null}
+        title="Supprimer cet employé ?"
+        description={
+          employeeToDelete
+            ? `${employeeToDelete.lastName} ${employeeToDelete.firstName} sera définitivement supprimé. Si des pointages, badges, missions ou réunions lui sont liés, la suppression sera refusée — désactivez-le plutôt dans ce cas.`
+            : undefined
+        }
+        confirmLabel="Supprimer"
+        danger
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => employeeToDelete && deleteMutation.mutate(employeeToDelete.id)}
+        onCancel={() => setEmployeeToDelete(null)}
+      />
     </div>
   );
 }

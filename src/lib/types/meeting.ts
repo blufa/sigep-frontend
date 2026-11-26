@@ -27,3 +27,11 @@ export interface MeetingInput {
    * qu'immédiatement à la création. */
   notifyAt?: string;
 }
+
+export interface MeetingUpdateInput {
+  title: string;
+  description?: string;
+  scheduledAt: string;
+  location?: string;
+  attendeeEmployeeIds: number[];
+}

@@ -63,7 +63,7 @@ export function IdBadge({
             <div className="flex items-center gap-2 print:gap-[0.36mm]">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={logoUrl} alt="Logo" className="h-[83px] w-[83px] shrink-0 object-contain print:h-[15mm] print:w-[15mm]" />
+                <img src={logoUrl} alt="Logo" className="h-[67px] w-[67px] shrink-0 object-contain print:h-[12mm] print:w-[12mm]" />
               ) : (
                 <Shield
                   className="h-13 w-13 shrink-0 print:h-[9.4mm] print:w-[9.4mm]"
