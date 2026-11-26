@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Printer, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,13 @@ import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/layout/page-header";
 import { EmployeeDetailModal } from "@/components/employees/employee-detail-modal";
 import { Pagination } from "@/components/ui/pagination";
 import { IdBadge } from "@/components/cards/id-badge";
 import { BadgeSheet } from "@/components/cards/badge-sheet";
-import { downloadEmployeeReportPdf, getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
+import { deleteEmployee, downloadEmployeeReportPdf, getEmployeePhotoUrl, listEmployees } from "@/lib/api/employees";
 import { getSheetCardViews } from "@/lib/api/badges";
 import { listPositions } from "@/lib/api/positions";
 import { getOrganization } from "@/lib/api/organization";
@@ -27,6 +28,7 @@ import { BadgeCardView } from "@/lib/types/badge";
 const GENRE_LABEL: Record<string, string> = { HOMME: "Homme", FEMME: "Femme" };
 
 export default function EmployeesPage() {
+  const queryClient = useQueryClient();
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
@@ -35,6 +37,7 @@ export default function EmployeesPage() {
   const [badgeCards, setBadgeCards] = useState<BadgeCardView[] | null>(null);
   const [badgePhotoUrls, setBadgePhotoUrls] = useState<(string | null)[]>([]);
   const [isLoadingBadges, setIsLoadingBadges] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   // Léger délai avant d'interroger l'API le temps que l'utilisateur finisse de taper, pour ne pas
   // déclencher une requête à chaque frappe.
@@ -77,6 +80,19 @@ export default function EmployeesPage() {
       allOnPageChecked ? current.filter((id) => !pageIds.includes(id)) : [...new Set([...current, ...pageIds])],
     );
   }
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteEmployee,
+    onSuccess: () => {
+      toast.success("Employé supprimé");
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setEmployeeToDelete(null);
+    },
+    onError: (error) => {
+      toast.error(extractErrorMessage(error, "Échec de la suppression"));
+      setEmployeeToDelete(null);
+    },
+  });
 
   async function handleDownloadReport() {
     try {
@@ -227,6 +243,15 @@ export default function EmployeesPage() {
                       <Button variant="secondary" size="sm" onClick={() => showBadges([employee.id])}>
                         Badge
                       </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-error-600 hover:bg-error-50"
+                        onClick={() => setEmployeeToDelete(employee)}
+                        disabled={deleteMutation.isPending}
+                      >
+                        Supprimer
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -263,6 +288,21 @@ export default function EmployeesPage() {
           <BadgeSheet cards={badgeCards} logoUrl={logoUrl} photoUrls={badgePhotoUrls} />
         ) : null}
       </Modal>
+
+      <ConfirmDialog
+        isOpen={employeeToDelete !== null}
+        title="Supprimer cet employé ?"
+        description={
+          employeeToDelete
+            ? `${employeeToDelete.lastName} ${employeeToDelete.firstName} sera définitivement supprimé. Si des pointages, badges, missions ou réunions lui sont liés, la suppression sera refusée — désactivez-le plutôt dans ce cas.`
+            : undefined
+        }
+        confirmLabel="Supprimer"
+        danger
+        isLoading={deleteMutation.isPending}
+        onConfirm={() => employeeToDelete && deleteMutation.mutate(employeeToDelete.id)}
+        onCancel={() => setEmployeeToDelete(null)}
+      />
     </div>
   );
 }

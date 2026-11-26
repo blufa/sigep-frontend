@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, User } from "lucide-react";
+import { Camera, Download, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhotoCaptureModal } from "@/components/employees/photo-capture-modal";
 
@@ -12,6 +12,14 @@ export function EmployeePhotoUpload({
   photoUrl: string | null;
   onUpload: (file: File) => void;
 }) {
+  function handleDownload() {
+    if (!photoUrl) return;
+    const link = document.createElement("a");
+    link.href = photoUrl;
+    link.download = "photo-employe.jpg";
+    link.click();
+  }
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showCamera, setShowCamera] = useState(false);
 
@@ -37,6 +45,11 @@ export function EmployeePhotoUpload({
           <Button type="button" variant="outline" size="sm" onClick={() => setShowCamera(true)}>
             <Camera className="h-4 w-4" /> Prendre une photo
           </Button>
+          {photoUrl ? (
+            <Button type="button" variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="h-4 w-4" /> Télécharger
+            </Button>
+          ) : null}
         </div>
         <p className="text-xs text-gray-500">Photo d&apos;identité utilisée sur le badge.</p>
       </div>

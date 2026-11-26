@@ -6,8 +6,10 @@ import { useSidebar } from "../context/SidebarContext";
 import { useAuth } from "@/providers/auth-provider";
 import {
   BoxCubeIcon,
+  CalenderIcon,
   DocsIcon,
   GridIcon,
+  GroupIcon,
   HorizontaLDots,
   ListIcon,
   PlugInIcon,
@@ -23,6 +25,8 @@ export type MenuKey =
   | "badges"
   | "attendance"
   | "scan"
+  | "missions"
+  | "meetings"
   | "users"
   | "settings";
 
@@ -41,6 +45,8 @@ const navItems: NavItem[] = [
   { key: "badges", icon: <BoxCubeIcon />, name: "Badges", path: "/badges" },
   { key: "attendance", icon: <TableIcon />, name: "Pointage", path: "/attendance" },
   { key: "scan", icon: <TimeIcon />, name: "Scanner un badge", path: "/attendance/scan" },
+  { key: "missions", icon: <CalenderIcon />, name: "Missions", path: "/missions", adminOnly: true },
+  { key: "meetings", icon: <GroupIcon />, name: "Réunions", path: "/meetings", adminOnly: true },
   { key: "users", icon: <PlugInIcon />, name: "Utilisateurs", path: "/users", adminOnly: true },
   { key: "settings", icon: <DocsIcon />, name: "Paramètres", path: "/settings", adminOnly: true },
 ];
