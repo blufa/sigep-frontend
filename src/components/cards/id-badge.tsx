@@ -134,12 +134,6 @@ export function IdBadge({
                 </p>
                 <p className="font-mono text-[14px] font-bold leading-tight print:text-[2.52mm]">{card.matricule}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider print:text-[1.8mm]" style={{ color: MUTED }}>
-                  Hiérarchie
-                </p>
-                <p className="text-[12px] font-semibold leading-tight print:text-[2.16mm]">{card.hierarchie ?? "—"}</p>
-              </div>
             </div>
           </div>
 
