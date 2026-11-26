@@ -1,6 +1,6 @@
 import { http } from "@/lib/api/client";
 import { PageResponse } from "@/lib/types/pagination";
-import { AttendanceEntry, AttendanceSummary, ScanResult } from "@/lib/types/attendance";
+import { AttendanceEntry, AttendanceSummary, DailyStatus, DailyStatusEntry, ScanResult } from "@/lib/types/attendance";
 
 export async function scanBadge(qrToken: string, source = "QR", photoBase64?: string | null): Promise<ScanResult> {
   const { data } = await http.post<ScanResult>("/attendance/scan", { qrToken, source, photoBase64 });
@@ -58,6 +58,20 @@ export async function getEmployeeMonthlyAttendanceReportPdfBlobUrl(
     responseType: "blob",
   });
   return URL.createObjectURL(data);
+}
+
+/** Statut (présent/absent/retard) de chaque employé actif pour un jour donné — couvre aussi les
+ * employés sans aucun pointage ce jour-là, contrairement à getAttendanceHistory. */
+export async function getDailyAttendanceStatus(params: {
+  date: string;
+  status?: DailyStatus;
+  page?: number;
+  size?: number;
+}): Promise<PageResponse<DailyStatusEntry>> {
+  const { data } = await http.get<PageResponse<DailyStatusEntry>>("/attendance/daily-status", {
+    params: { page: 0, size: 20, ...params },
+  });
+  return data;
 }
 
 export async function getAttendanceHistory(params: {

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Camera, FileText, Flag, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { SelectSearch } from "@/components/ui/select-search";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,17 +20,27 @@ import { PageHeader } from "@/components/layout/page-header";
 import {
   getAttendanceHistory,
   getAttendancePunchPhotoUrl,
+  getDailyAttendanceStatus,
   getEmployeeMonthlyAttendanceReportPdfBlobUrl,
 } from "@/lib/api/attendance";
 import { listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
-import { AttendanceEntry } from "@/lib/types/attendance";
+import { AttendanceEntry, DailyStatus } from "@/lib/types/attendance";
+
+const STATUS_LABEL: Record<DailyStatus, string> = { PRESENT: "Présent", ABSENT: "Absent", RETARD: "Retard" };
+const STATUS_TONE: Record<DailyStatus, "success" | "danger" | "accent"> = {
+  PRESENT: "success",
+  ABSENT: "danger",
+  RETARD: "accent",
+};
 
 export default function AttendanceHistoryPage() {
   const [employeeId, setEmployeeId] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"" | DailyStatus>("");
+  const [statusDay, setStatusDay] = useState(() => new Date().toISOString().slice(0, 10));
   const [page, setPage] = useState(0);
   const [viewingPhotoUrl, setViewingPhotoUrl] = useState<string | null>(null);
   const [viewingPhotoName, setViewingPhotoName] = useState<string | null>(null);
@@ -58,6 +69,16 @@ export default function AttendanceHistoryPage() {
         page,
         size: 10,
       }),
+    enabled: !statusFilter,
+  });
+
+  // Vue distincte de l'historique brut : un employé absent n'a aucun pointage à lister, donc le
+  // filtre par statut (Présent/Absent/Retard) nécessite de couvrir TOUS les employés actifs pour un
+  // jour précis plutôt que de filtrer des lignes de pointage qui n'existent pas pour les absents.
+  const { data: statusData, isLoading: isStatusLoading } = useQuery({
+    queryKey: ["attendance-daily-status", statusDay, statusFilter, page],
+    queryFn: () => getDailyAttendanceStatus({ date: statusDay, status: statusFilter || undefined, page, size: 10 }),
+    enabled: !!statusFilter,
   });
 
   function handleEmployeeChange(value: string) {
@@ -72,6 +93,16 @@ export default function AttendanceHistoryPage() {
 
   function handleDateToChange(value: string) {
     setDateTo(value);
+    setPage(0);
+  }
+
+  function handleStatusFilterChange(value: string) {
+    setStatusFilter(value as "" | DailyStatus);
+    setPage(0);
+  }
+
+  function handleStatusDayChange(value: string) {
+    setStatusDay(value);
     setPage(0);
   }
 
@@ -187,6 +218,26 @@ export default function AttendanceHistoryPage() {
             />
             Pointages signalés uniquement
           </label>
+          <div>
+            <Label htmlFor="filter-status">Statut</Label>
+            <Select id="filter-status" value={statusFilter} onChange={(e) => handleStatusFilterChange(e.target.value)}>
+              <option value="">Tous (historique des pointages)</option>
+              <option value="PRESENT">Présents</option>
+              <option value="ABSENT">Absents</option>
+              <option value="RETARD">En retard</option>
+            </Select>
+          </div>
+          {statusFilter ? (
+            <div>
+              <Label htmlFor="filter-status-day">Jour</Label>
+              <Input
+                id="filter-status-day"
+                type="date"
+                value={statusDay}
+                onChange={(e) => handleStatusDayChange(e.target.value)}
+              />
+            </div>
+          ) : null}
         </div>
         {employeeId ? (
           <div className="flex flex-wrap items-end gap-3 border-t border-gray-100 p-4 dark:border-gray-800">
@@ -207,84 +258,148 @@ export default function AttendanceHistoryPage() {
         ) : null}
       </Card>
 
-      <Card className="print:hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-gray-800">
-              <TableRow>
-                {["Date et heure", "Matricule", "Employé", "Sens", "Source", "Preuve"].map((label) => (
-                  <TableCell
-                    key={label}
-                    isHeader
-                    className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                  >
-                    {label}
-                  </TableCell>
+      {statusFilter ? (
+        <Card className="print:hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="border-b border-gray-100 dark:border-gray-800">
+                <TableRow>
+                  {["Employé", "Matricule", "Poste", "Statut", "Entrée", "Sortie"].map((label) => (
+                    <TableCell
+                      key={label}
+                      isHeader
+                      className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                    >
+                      {label}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {isStatusLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
+                      Chargement…
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {statusData?.items.map((entry) => (
+                  <TableRow key={entry.employeeId}>
+                    <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">{entry.fullName}</TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">{entry.matricule}</TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {entry.positionTitle ?? "—"}
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <StatusBadge label={STATUS_LABEL[entry.status]} tone={STATUS_TONE[entry.status]} />
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {entry.firstEntree ? dayjs(entry.firstEntree).format("HH:mm:ss") : "—"}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {entry.lastSortie ? dayjs(entry.lastSortie).format("HH:mm:ss") : "—"}
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {isLoading ? (
+                {!isStatusLoading && statusData?.items.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
+                      Aucun employé ne correspond à ce statut pour ce jour.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+          {statusData ? (
+            <Pagination
+              page={statusData.page}
+              totalPages={statusData.totalPages}
+              totalElements={statusData.totalItems}
+              onPageChange={setPage}
+            />
+          ) : null}
+        </Card>
+      ) : (
+        <Card className="print:hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="border-b border-gray-100 dark:border-gray-800">
                 <TableRow>
-                  <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
-                    Chargement…
-                  </TableCell>
+                  {["Date et heure", "Matricule", "Employé", "Sens", "Source", "Preuve"].map((label) => (
+                    <TableCell
+                      key={label}
+                      isHeader
+                      className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+                    >
+                      {label}
+                    </TableCell>
+                  ))}
                 </TableRow>
-              ) : null}
-              {visibleEntries.map((entry) => (
-                <TableRow key={entry.id} className={entry.flagged ? "bg-error-50/40 dark:bg-error-500/5" : undefined}>
-                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {dayjs(entry.scannedAt).format("DD/MM/YYYY HH:mm:ss")}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
-                    {entry.matricule ?? "—"}
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
-                    {entry.fullName}
-                    {entry.flagged ? (
-                      <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-error-600">
-                        <Flag className="h-3 w-3" /> Signalé
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    <StatusBadge
-                      label={entry.direction === "ENTREE" ? "Entrée" : "Sortie"}
-                      tone={entry.direction === "ENTREE" ? "success" : "accent"}
-                    />
-                  </TableCell>
-                  <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {entry.source}
-                  </TableCell>
-                  <TableCell className="px-5 py-4">
-                    {entry.hasPhoto ? (
-                      <button
-                        type="button"
-                        onClick={() => handleViewPhoto(entry.id, entry.fullName)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
-                      >
-                        <Camera className="h-3.5 w-3.5" /> Voir
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {!isLoading && visibleEntries.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
-                    Aucun pointage pour ces critères.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
-        </div>
-        {data ? (
-          <Pagination page={data.page} totalPages={data.totalPages} totalElements={data.totalItems} onPageChange={setPage} />
-        ) : null}
-      </Card>
+              </TableHeader>
+              <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
+                      Chargement…
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {visibleEntries.map((entry) => (
+                  <TableRow key={entry.id} className={entry.flagged ? "bg-error-50/40 dark:bg-error-500/5" : undefined}>
+                    <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {dayjs(entry.scannedAt).format("DD/MM/YYYY HH:mm:ss")}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
+                      {entry.matricule ?? "—"}
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
+                      {entry.fullName}
+                      {entry.flagged ? (
+                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-error-600">
+                          <Flag className="h-3 w-3" /> Signalé
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      <StatusBadge
+                        label={entry.direction === "ENTREE" ? "Entrée" : "Sortie"}
+                        tone={entry.direction === "ENTREE" ? "success" : "accent"}
+                      />
+                    </TableCell>
+                    <TableCell className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {entry.source}
+                    </TableCell>
+                    <TableCell className="px-5 py-4">
+                      {entry.hasPhoto ? (
+                        <button
+                          type="button"
+                          onClick={() => handleViewPhoto(entry.id, entry.fullName)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline"
+                        >
+                          <Camera className="h-3.5 w-3.5" /> Voir
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!isLoading && visibleEntries.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="px-5 py-4 text-sm text-gray-500">
+                      Aucun pointage pour ces critères.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+          {data ? (
+            <Pagination page={data.page} totalPages={data.totalPages} totalElements={data.totalItems} onPageChange={setPage} />
+          ) : null}
+        </Card>
+      )}
 
       {/* Visible uniquement à l'impression — liste complète (non paginée) correspondant aux
           filtres actuels, voir handlePrint. */}
