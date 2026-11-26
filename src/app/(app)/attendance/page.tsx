@@ -27,11 +27,17 @@ import { listEmployees } from "@/lib/api/employees";
 import { extractErrorMessage } from "@/lib/api/client";
 import { AttendanceEntry, DailyStatus } from "@/lib/types/attendance";
 
-const STATUS_LABEL: Record<DailyStatus, string> = { PRESENT: "Présent", ABSENT: "Absent", RETARD: "Retard" };
-const STATUS_TONE: Record<DailyStatus, "success" | "danger" | "accent"> = {
+const STATUS_LABEL: Record<DailyStatus, string> = {
+  PRESENT: "Présent",
+  ABSENT: "Absent",
+  RETARD: "Retard",
+  EN_MISSION: "En mission",
+};
+const STATUS_TONE: Record<DailyStatus, "success" | "danger" | "accent" | "neutral"> = {
   PRESENT: "success",
   ABSENT: "danger",
   RETARD: "accent",
+  EN_MISSION: "neutral",
 };
 
 export default function AttendanceHistoryPage() {
@@ -225,6 +231,7 @@ export default function AttendanceHistoryPage() {
               <option value="PRESENT">Présents</option>
               <option value="ABSENT">Absents</option>
               <option value="RETARD">En retard</option>
+              <option value="EN_MISSION">En mission</option>
             </Select>
           </div>
           {statusFilter ? (

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Users, UserCheck, Gauge, Clock, LogOut, FileDown, ArrowRight } from "lucide-react";
+import { Users, UserCheck, Gauge, Clock, LogOut, FileDown, ArrowRight, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
@@ -149,7 +149,7 @@ export default function DashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           icon={<Users className="h-5 w-5 text-brand-600" />}
           label="Employés actifs"
@@ -179,6 +179,12 @@ export default function DashboardPage() {
           label="Départs anticipés"
           value={isLoadingSummary ? "—" : String(summary?.earlyDepartureToday ?? 0)}
           accent="bg-error-50"
+        />
+        <StatCard
+          icon={<Briefcase className="h-5 w-5 text-gray-600" />}
+          label="En mission aujourd'hui"
+          value={isLoadingSummary ? "—" : String(summary?.onMissionToday ?? 0)}
+          accent="bg-gray-100"
         />
       </div>
 
